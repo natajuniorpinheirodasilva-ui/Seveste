@@ -1,0 +1,140 @@
+import { ArrowLeft, HandHeart } from "lucide-react"
+import Input from "./Input"
+
+type RecipientFormProps = {
+    onBack: () => void
+}
+
+const clothingNeeds = ["Roupas", "Calçados", "Agasalhos", "Acessórios"]
+
+export default function RecipientForm({ onBack }: RecipientFormProps) {
+    return (
+        <section className="mx-auto w-full max-w-2xl rounded-3xl border border-seveste-sage/30 bg-seveste-white p-6 shadow-[0_24px_70px_rgba(23,63,53,0.12)] sm:p-10">
+            <button
+                type="button"
+                onClick={onBack}
+                className="mb-8 flex cursor-pointer items-center gap-2 text-sm font-medium text-seveste-muted transition hover:text-seveste-dark"
+            >
+                <ArrowLeft size={18} />
+                Voltar
+            </button>
+
+            <div className="mb-8 flex items-start gap-4">
+                <span className="rounded-2xl bg-seveste-accent p-3 text-seveste-dark">
+                    <HandHeart size={28} />
+                </span>
+                <div>
+                    <p className="mb-1 text-sm font-semibold uppercase tracking-[0.2em] text-seveste-green">
+                        Quero ser acolhido
+                    </p>
+                    <h1 className="text-3xl font-semibold text-seveste-dark">
+                        Cadastro de acolhido
+                    </h1>
+                    <p className="mt-2 text-base text-seveste-muted">
+                        Informe somente o necessário para encontrarmos doações compatíveis com você.
+                    </p>
+                </div>
+            </div>
+
+            <form className="grid gap-5 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                    <Input
+                        label="Nome completo"
+                        name="name"
+                        type="text"
+                        autoComplete="name"
+                        placeholder="Como podemos chamar você?"
+                        required
+                    />
+                </div>
+                <Input
+                    label="E-mail"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@exemplo.com"
+                    required
+                />
+                <Input
+                    label="Senha"
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Mínimo de 8 caracteres"
+                    minLength={8}
+                    required
+                />
+                <Input
+                    label="Cidade"
+                    name="city"
+                    type="text"
+                    autoComplete="address-level2"
+                    placeholder="Sua cidade"
+                    required
+                />
+                <Input
+                    label="Estado"
+                    name="state"
+                    type="text"
+                    autoComplete="address-level1"
+                    placeholder="UF"
+                    maxLength={2}
+                    required
+                />
+
+                <fieldset className="sm:col-span-2">
+                    <legend className="mb-3 text-sm font-medium text-seveste-text">
+                        O que você procura?
+                    </legend>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {clothingNeeds.map((item) => (
+                            <label
+                                key={item}
+                                className="flex cursor-pointer items-center gap-2 rounded-xl border border-seveste-sage/50 bg-seveste-cream px-3 py-3 text-sm text-seveste-text transition hover:border-seveste-green"
+                            >
+                                <input
+                                    type="checkbox"
+                                    name="needs"
+                                    value={item.toLowerCase()}
+                                    className="size-4 accent-seveste-green"
+                                />
+                                {item}
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+
+                <Input
+                    label="Tamanho de roupa"
+                    name="clothingSize"
+                    type="text"
+                    placeholder="Ex.: M, G ou 42"
+                />
+                <Input
+                    label="Número do calçado"
+                    name="shoeSize"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ex.: 38"
+                />
+
+                <label className="flex items-start gap-3 text-sm leading-6 text-seveste-muted sm:col-span-2">
+                    <input
+                        type="checkbox"
+                        name="privacy"
+                        required
+                        className="mt-1 size-4 accent-seveste-green"
+                    />
+                    Li o aviso de privacidade e concordo com o uso dos meus dados para encontrar doações compatíveis.
+                </label>
+
+                <button
+                    type="submit"
+                    className="mt-2 cursor-pointer rounded-xl bg-seveste-green px-6 py-3 font-semibold text-seveste-white transition hover:-translate-y-0.5 hover:bg-seveste-dark sm:col-span-2"
+                >
+                    Continuar como acolhido
+                </button>
+            </form>
+        </section>
+    )
+}
