@@ -10,4 +10,5 @@ func ConfigurarRotasUsuario(route *gin.Engine) {
 	var usuarios *gin.RouterGroup = route.Group("/usuarios")
 	usuarios.GET("/", controllers.GetUsuarios)
 	usuarios.GET("/:nome", controllers.GetUsuario)
+	usuarios.POST("/", controllers.CriarUsuario)
 }
