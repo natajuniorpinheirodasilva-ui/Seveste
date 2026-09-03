@@ -4,18 +4,27 @@ import DonorForm from "@/components/DonorForm"
 import RecipientForm from "@/components/RecipientForm"
 import { HeartHandshake, Search, Shirt } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { use, useState } from "react"
 
-type Role = "donor" | "recipient" | null
-
-export default function JoinPage() {
-    const [selectedRole, setSelectedRole] = useState<Role>(null)
+export default function JoinPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ role?: string | string[] }>
+}) {
+    const { role } = use(searchParams)
+    const initialRole = role === "donor" || role === "recipient" ? role : null
+    const [selectedRole, setSelectedRole] = useState<"donor" | "recipient" | null>(initialRole)
     const router = useRouter()
 
     if (selectedRole === "donor") {
         return (
             <main className="min-h-screen bg-seveste-cream px-4 py-10 sm:px-6">
-                <DonorForm onBack={() => setSelectedRole(null)} />
+                <DonorForm
+                    onBack={() => {
+                        setSelectedRole(null)
+                        router.replace("/join")
+                    }}
+                />
             </main>
         )
     }
@@ -23,7 +32,12 @@ export default function JoinPage() {
     if (selectedRole === "recipient") {
         return (
             <main className="min-h-screen bg-seveste-cream px-4 py-10 sm:px-6">
-                <RecipientForm onBack={() => setSelectedRole(null)} />
+                <RecipientForm
+                    onBack={() => {
+                        setSelectedRole(null)
+                        router.replace("/join")
+                    }}
+                />
             </main>
         )
     }
@@ -39,13 +53,19 @@ export default function JoinPage() {
             title: "Quero doar",
             description: "Compartilhe peças em bom estado com quem precisa.",
             icon: Shirt,
-            action: () => setSelectedRole("donor"),
+            action: () => {
+                setSelectedRole("donor")
+                router.replace("/join?role=donor")
+            },
         },
         {
             title: "Quero receber",
             description: "Encontre roupas que façam sentido para sua necessidade.",
             icon: HeartHandshake,
-            action: () => setSelectedRole("recipient"),
+            action: () => {
+                setSelectedRole("recipient")
+                router.replace("/join?role=recipient")
+            },
         },
     ]
 
@@ -70,10 +90,10 @@ export default function JoinPage() {
                             key={title}
                             type="button"
                             onClick={action}
-                            className={`group cursor-pointer rounded-3xl border p-7 text-left transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(23,63,53,0.13)] ${index === 1 ? "border-seveste-green bg-seveste-green text-seveste-white" : "border-seveste-sage/30 bg-seveste-white text-seveste-text"}`}
+                            className={`group cursor-pointer border p-7 text-left transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(23,63,53,0.13)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-seveste-green ${index === 1 ? "border-seveste-green bg-seveste-green text-seveste-white" : "border-seveste-sage/30 bg-seveste-white text-seveste-text"}`}
                         >
                             <span
-                                className={`mb-8 inline-flex rounded-2xl p-3 ${index === 1 ? "bg-seveste-white/15" : "bg-seveste-surface text-seveste-dark"}`}
+                                className={`mb-8 inline-flex p-3 ${index === 1 ? "bg-seveste-white/15" : "bg-seveste-surface text-seveste-dark"}`}
                             >
                                 <Icon size={28} />
                             </span>
