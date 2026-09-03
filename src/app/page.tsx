@@ -1,8 +1,7 @@
-export default function HOME() {
-    return (
-        <div>
-            HOME!
-        </div>
-    )
+import Navbar from "@/components/Navbar"
 
+export default function Home() {
+    return (
+        <Navbar />
+    )
 }
