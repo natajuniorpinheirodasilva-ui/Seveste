@@ -9,16 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type UsuarioController struct {
-	repo repositories.UsuarioRepositorio
-}
-
-func NovoControllerDeUsuario(repo repositories.UsuarioRepositorio) *UsuarioController {
-	return &UsuarioController{repo: repo}
-}
-
-func (controller *UsuarioController) GetUsuarios(c *gin.Context) {
-	usuarios, err := controller.repo.BuscarTodos()
+func GetUsuarios(c *gin.Context) {
+	usuarios, err := repositories.UsuarioRepo.BuscarTodos()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 		return
@@ -27,15 +19,15 @@ func (controller *UsuarioController) GetUsuarios(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"usuarios": usuarios})
 }
 
-func (controller *UsuarioController) GetUsuario(c *gin.Context) {
+func GetUsuario(c *gin.Context) {
 	var ID string = c.Param("id")
-	var intID, err = strconv.Atoi(ID)
+	var intID, err = strconv.ParseUint(ID, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	usuario, err := controller.repo.BuscarPorID(intID)
+	usuario, err := repositories.UsuarioRepo.BuscarPorID(intID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 		return
@@ -44,7 +36,7 @@ func (controller *UsuarioController) GetUsuario(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"usuario": usuario})
 }
 
-func (controller *UsuarioController) CriarUsuario(c *gin.Context) {
+func CriarUsuario(c *gin.Context) {
 	var usuario models.Usuario
 
 	if err := c.ShouldBindJSON(&usuario); err != nil {
@@ -52,10 +44,27 @@ func (controller *UsuarioController) CriarUsuario(c *gin.Context) {
 		return
 	}
 
-	criado, err := controller.repo.Criar(&usuario)
+	criado, err := repositories.UsuarioRepo.Criar(&usuario)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"criado": criado})
+}
+
+func DeletarUsuario(c *gin.Context) {
+	var ID string = c.Param("id")
+	var intID, err = strconv.ParseUint(ID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	err = repositories.UsuarioRepo.Deletar(intID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }

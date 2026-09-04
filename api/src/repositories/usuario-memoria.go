@@ -8,13 +8,13 @@ import (
 
 type RepositorioDeMemoriaUsuario struct {
 	mu       sync.RWMutex
-	usuarios map[int]models.Usuario
-	proxID   int
+	usuarios map[uint64]models.Usuario
+	proxID   uint64
 }
 
 func NovoRepositorioDeUsuario() *RepositorioDeMemoriaUsuario {
 	return &RepositorioDeMemoriaUsuario{
-		usuarios: make(map[int]models.Usuario),
+		usuarios: make(map[uint64]models.Usuario),
 		proxID:   1,
 	}
 }
@@ -39,14 +39,10 @@ func (r *RepositorioDeMemoriaUsuario) BuscarTodos() ([]models.Usuario, error) {
 		lista = append(lista, usuario)
 	}
 
-	if len(lista) <= 0 {
-		return nil, errors.New("nenhum usuario encontrado")
-	}
-
 	return lista, nil
 }
 
-func (r *RepositorioDeMemoriaUsuario) BuscarPorID(ID int) (*models.Usuario, error) {
+func (r *RepositorioDeMemoriaUsuario) BuscarPorID(ID uint64) (*models.Usuario, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -70,4 +66,17 @@ func (r *RepositorioDeMemoriaUsuario) BuscarPorTipo(tipo models.TipoUsuario) ([]
 	}
 
 	return filtrados, nil
+}
+
+func (r *RepositorioDeMemoriaUsuario) Deletar(ID uint64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var _, existe = r.usuarios[ID]
+	if !existe {
+		return errors.New("usuario nao encontrado")
+	}
+	delete(r.usuarios, ID)
+
+	return nil
 }

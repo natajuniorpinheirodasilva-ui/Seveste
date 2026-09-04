@@ -6,26 +6,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Controllers struct {
-	Usuario *controllers.UsuarioController
-}
-
-func Configurar(c Controllers) *gin.Engine {
+func Configurar() *gin.Engine {
 	router := gin.Default()
 
 	v1 := router.Group("/api/v1")
 	{
-		registrarRotasDeUsuario(v1, c.Usuario)
+		registrarRotasDeUsuario(v1)
 	}
 
 	return router
 }
 
-func registrarRotasDeUsuario(rg *gin.RouterGroup, c *controllers.UsuarioController) {
+func registrarRotasDeUsuario(rg *gin.RouterGroup) {
 	usuarios := rg.Group("/usuarios")
 	{
-		usuarios.GET("/", c.GetUsuarios)
-		usuarios.GET("/:id", c.GetUsuario)
-		usuarios.POST("/", c.CriarUsuario)
+		usuarios.GET("/", controllers.GetUsuarios)
+		usuarios.GET("/:id", controllers.GetUsuario)
+		usuarios.POST("/", controllers.CriarUsuario)
+		usuarios.DELETE("/:id", controllers.DeletarUsuario)
 	}
 }

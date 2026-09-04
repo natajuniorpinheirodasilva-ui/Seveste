@@ -8,7 +8,7 @@ const (
 )
 
 type Usuario struct {
-	ID       int         `json:"id"`
+	ID       uint64      `json:"id"`
 	Nome     string      `json:"nome" binding:"required"`
 	Email    string      `json:"email" binding:"required,email"`
 	Senha    string      `json:"senha,omitempty" binding:"required"`
@@ -21,6 +21,3 @@ type Usuario struct {
 	TamanhoRoupa     string   `json:"tamanho_roupa"`
 	TamanhoCalcado   uint8    `json:"tamanho_calcado"`
 }
-
-func (u *Usuario) GetID() int   { return u.ID }
-func (u *Usuario) SetID(ID int) { u.ID = ID }
