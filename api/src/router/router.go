@@ -23,6 +23,7 @@ func registrarRotasDeUsuario(rg *gin.RouterGroup) {
 		usuarios.GET("/", controllers.GetUsuarios)
 		usuarios.GET("/:id", controllers.GetUsuario)
 		usuarios.POST("/", controllers.CriarUsuario)
+		usuarios.PUT("/:id", controllers.AtualizarUsuario)
 		usuarios.DELETE("/:id", controllers.DeletarUsuario)
 	}
 }

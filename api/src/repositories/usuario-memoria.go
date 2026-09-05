@@ -68,6 +68,21 @@ func (r *RepositorioDeMemoriaUsuario) BuscarPorTipo(tipo models.TipoUsuario) ([]
 	return filtrados, nil
 }
 
+func (r *RepositorioDeMemoriaUsuario) Atualizar(ID uint64, novo models.Usuario) (*models.Usuario, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var _, existe = r.usuarios[ID]
+	if !existe {
+		return nil, errors.New("usuario nao encontrado")
+	}
+
+	novo.ID = ID
+
+	r.usuarios[ID] = novo
+	return &novo, nil
+}
+
 func (r *RepositorioDeMemoriaUsuario) Deletar(ID uint64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

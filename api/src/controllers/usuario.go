@@ -47,9 +47,33 @@ func CriarUsuario(c *gin.Context) {
 	criado, err := repositories.UsuarioRepo.Criar(&usuario)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"criado": criado})
+}
+
+func AtualizarUsuario(c *gin.Context) {
+	var ID string = c.Param("id")
+	var intID, err = strconv.ParseUint(ID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var novo models.Usuario
+	if err = c.ShouldBindJSON(&novo); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	atualizado, err := repositories.UsuarioRepo.Atualizar(intID, novo)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, atualizado)
 }
 
 func DeletarUsuario(c *gin.Context) {
