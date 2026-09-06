@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"seveste-api/src/seguranca"
 	"slices"
 	"strings"
 )
@@ -27,7 +28,9 @@ type Usuario struct {
 }
 
 func (u *Usuario) Preparar(etapa string) error {
-	u.formatar()
+	if err := u.formatar(etapa); err != nil {
+		return err
+	}
 
 	if err := u.validar(etapa); err != nil {
 		return err
@@ -38,7 +41,7 @@ func (u *Usuario) Preparar(etapa string) error {
 
 // Tira todos os espaços em volta dos campos, necessário porque mesmo com a binding required, ele ainda
 // considera " " como preenchido
-func (u *Usuario) formatar() {
+func (u *Usuario) formatar(etapa string) error {
 	u.Nome = strings.TrimSpace(u.Nome)
 	u.Email = strings.TrimSpace(u.Email)
 	u.Senha = strings.TrimSpace(u.Senha)
@@ -51,6 +54,17 @@ func (u *Usuario) formatar() {
 		s = strings.TrimSpace(s)
 		u.RoupasProcuradas[index] = s
 	}
+
+	if etapa == "cadastro" {
+		hash, err := seguranca.Hash(u.Senha)
+		if err != nil {
+			return err
+		}
+
+		u.Senha = string(hash)
+	}
+
+	return nil
 }
 
 // Valida se os campos obrigatórios estão preenchidos e se o tipo de usuário é um dos tipos aceitados
