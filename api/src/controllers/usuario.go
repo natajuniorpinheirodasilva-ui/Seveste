@@ -23,7 +23,7 @@ func GetUsuario(c *gin.Context) {
 	var ID string = c.Param("id")
 	var intID, err = strconv.ParseUint(ID, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
@@ -40,7 +40,12 @@ func CriarUsuario(c *gin.Context) {
 	var usuario models.Usuario
 
 	if err := c.ShouldBindJSON(&usuario); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	if err := usuario.Preparar("cadastro"); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 

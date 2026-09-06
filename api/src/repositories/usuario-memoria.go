@@ -54,7 +54,7 @@ func (r *RepositorioDeMemoriaUsuario) BuscarPorID(ID uint64) (*models.Usuario, e
 	return &u, nil
 }
 
-func (r *RepositorioDeMemoriaUsuario) BuscarPorTipo(tipo models.TipoUsuario) ([]models.Usuario, error) {
+func (r *RepositorioDeMemoriaUsuario) BuscarPorTipo(tipo string) ([]models.Usuario, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
