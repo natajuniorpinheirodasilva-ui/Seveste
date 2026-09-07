@@ -1,34 +1,59 @@
 import Navbar from "@/components/Navbar"
-import Image from "next/image"
+import Link from "next/link"
 
 export default function Home() {
     return (
         <div>
-            <div className="flex min-h-dvh flex-col">
+            <header>
                 <Navbar />
+            </header>
+            <main className="bg-seveste-text">
+                <section className="mx-6 mb-12 flex min-h-dvh flex-col overflow-hidden bg-seveste-white shadow-xl md:mx-16 md:mb-20 md:flex-row lg:mx-30">
+                    <div className="flex flex-1 flex-col justify-center p-8 md:p-10 lg:p-14">
+                        <span className="mb-5 font-sans text-xs font-bold uppercase tracking-[0.28em] text-seveste-green">
+                            Compartilhe cuidado
+                        </span>
 
-                <section className="relative flex min-h-128 flex-1 items-center justify-center overflow-hidden">
-                    <button
-                        className="relative z-10 cursor-pointer border border-seveste-surface bg-seveste-surface px-5 py-2.5 font-sans text-lg font-semibold text-seveste-dark shadow-sm transition duration-200 hover:-translate-y-px hover:border-seveste-accent hover:bg-seveste-accent hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seveste-accent"
-                    >
-                        Quero doar
-                    </button>
+                        <h1 className="max-w-xl text-4xl leading-[0.95] md:text-5xl lg:text-6xl">
+                            Uma doação faz toda a <span className="font-bold">diferença</span>. <br />
+                            Doe <span className="font-bold">agora</span>. Mude <span className="font-bold">vidas</span>.
+                        </h1>
 
-                    <button
-                        className="ml-2 relative z-10 cursor-pointer border border-seveste-surface/70 bg-transparent px-5 py-2.5 font-sans text-lg font-semibold text-seveste-white transition duration-200 hover:-translate-y-px hover:border-seveste-accent hover:bg-seveste-accent/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seveste-accent"
-                    >
-                        Quero receber
-                    </button>
+                        <p className="mt-6 max-w-md text-base leading-relaxed text-seveste-muted">
+                            Uma peça parada no seu armário pode representar acolhimento e dignidade para outra pessoa.
+                        </p>
 
-                    <Image
-                        src="/images/hero-banner.png"
-                        className="object-cover object-center bg-black/50"
-                        alt="Hero Banner"
-                        fill
-                    />
-                    <div className="absolute inset-0 bg-black/50" />
+                        <Link
+                            href="/join?role=donor"
+                            className="border-seveste-dark bg-seveste-dark text-seveste-white hover:border-seveste-green hover:bg-seveste-green focus-visible:outline-seveste-accent mt-8 w-fit cursor-pointer border px-6 py-3 font-sans text-base font-semibold tracking-wide shadow-sm transition duration-200 hover:-translate-y-px hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2"
+                        >
+                            Quero doar
+                        </Link>
+                    </div>
+
+                    <div className="flex flex-1 flex-col justify-center bg-seveste-dark p-8 text-seveste-white md:p-10 lg:p-14">
+                        <span className="mb-5 font-sans text-xs font-bold uppercase tracking-[0.28em] text-seveste-accent">
+                            Encontre acolhimento
+                        </span>
+
+                        <h2 className="max-w-xl text-4xl leading-[0.95] md:text-5xl lg:text-6xl">
+                            Precisa de uma peça? Podemos te <span className="font-bold">ajudar</span>. <br />
+                            Cadastre-se <span className="font-bold">agora</span>. Seja <span className="font-bold">acolhido</span>.
+                        </h2>
+
+                        <p className="mt-6 max-w-md text-base leading-relaxed text-seveste-surface">
+                            Conte com uma rede feita para aproximar quem deseja ajudar de quem precisa receber.
+                        </p>
+
+                        <Link
+                            className="border-seveste-accent bg-seveste-accent text-seveste-dark hover:border-seveste-white hover:bg-seveste-white focus-visible:outline-seveste-accent mt-8 w-fit cursor-pointer border px-6 py-3 font-sans text-base font-semibold tracking-wide shadow-sm transition duration-200 hover:-translate-y-px hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2"
+                            href="/join?role=recipient"
+                        >
+                            Quero receber
+                        </Link>
+                    </div>
                 </section>
-            </div>
+            </main>
         </div>
     )
 }

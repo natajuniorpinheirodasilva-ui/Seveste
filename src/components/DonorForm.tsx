@@ -1,5 +1,6 @@
 import { ArrowLeft, HeartHandshake } from "lucide-react"
 import Input from "./Input"
+import Link from "next/link"
 
 type DonorFormProps = {
     onBack: () => void
@@ -37,7 +38,7 @@ export default function DonorForm({ onBack }: DonorFormProps) {
             <form className="grid gap-5 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                     <Input
-                        label="Nome completo"
+                        label="Nome completo *"
                         name="name"
                         type="text"
                         autoComplete="name"
@@ -46,7 +47,7 @@ export default function DonorForm({ onBack }: DonorFormProps) {
                     />
                 </div>
                 <Input
-                    label="E-mail"
+                    label="E-mail *"
                     name="email"
                     type="email"
                     autoComplete="email"
@@ -54,7 +55,7 @@ export default function DonorForm({ onBack }: DonorFormProps) {
                     required
                 />
                 <Input
-                    label="Senha"
+                    label="Senha *"
                     name="password"
                     type="password"
                     autoComplete="new-password"
@@ -63,7 +64,7 @@ export default function DonorForm({ onBack }: DonorFormProps) {
                     required
                 />
                 <Input
-                    label="Cidade"
+                    label="Cidade *"
                     name="city"
                     type="text"
                     autoComplete="address-level2"
@@ -71,7 +72,7 @@ export default function DonorForm({ onBack }: DonorFormProps) {
                     required
                 />
                 <Input
-                    label="Estado"
+                    label="Estado *"
                     name="state"
                     type="text"
                     autoComplete="address-level1"
@@ -94,9 +95,13 @@ export default function DonorForm({ onBack }: DonorFormProps) {
                         type="checkbox"
                         name="privacy"
                         required
-                        className="mt-1 size-4 accent-seveste-green"
+                        className="mt-1 size-4 accent-seveste-green cursor-pointer"
                     />
-                    Li o aviso de privacidade e concordo com o uso dos meus dados para viabilizar as doações.
+                    <Link
+                        className="underline hover:text-seveste-green"
+                        href="/privacy-policy">
+                        Li o aviso de privacidade e concordo com o uso dos meus dados para viabilizar as doações.
+                    </Link>
                 </label>
 
                 <button

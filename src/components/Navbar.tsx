@@ -1,10 +1,24 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 import { Menu } from "lucide-react"
+import { useEffect, useState } from "react"
 
 export default function Navbar() {
+    const [isVisible, setIsVisible] = useState(false)
+
+    useEffect(() => {
+        const handleScroll = () => setIsVisible(window.scrollY > 24)
+
+        handleScroll()
+        window.addEventListener("scroll", handleScroll)
+
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [])
+
     return (
-        <nav className="relative z-20 flex items-center justify-between bg-seveste-dark px-4 py-3 shadow-lg md:px-15">
+        <nav className={`fixed inset-x-0 top-0 z-20 flex items-center justify-between bg-seveste-dark px-4 py-3 shadow-lg transition-transform duration-300 md:px-15 ${isVisible ? "translate-y-0" : "-translate-y-full"}`}>
             <details className="relative md:hidden">
                 <summary
                     className="flex size-11 cursor-pointer list-none items-center justify-center text-seveste-white [&::-webkit-details-marker]:hidden"
