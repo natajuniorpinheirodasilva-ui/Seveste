@@ -1,5 +1,6 @@
 import { ArrowLeft, HandHeart } from "lucide-react"
 import Input from "./Input"
+import Link from "next/link"
 
 type RecipientFormProps = {
     onBack: () => void
@@ -39,7 +40,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
             <form className="grid gap-5 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                     <Input
-                        label="Nome completo"
+                        label="Nome completo *"
                         name="name"
                         type="text"
                         autoComplete="name"
@@ -48,7 +49,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     />
                 </div>
                 <Input
-                    label="E-mail"
+                    label="E-mail *"
                     name="email"
                     type="email"
                     autoComplete="email"
@@ -56,7 +57,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     required
                 />
                 <Input
-                    label="Senha"
+                    label="Senha *"
                     name="password"
                     type="password"
                     autoComplete="new-password"
@@ -65,7 +66,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     required
                 />
                 <Input
-                    label="Cidade"
+                    label="Cidade *"
                     name="city"
                     type="text"
                     autoComplete="address-level2"
@@ -73,7 +74,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     required
                 />
                 <Input
-                    label="Estado"
+                    label="Estado *"
                     name="state"
                     type="text"
                     autoComplete="address-level1"
@@ -84,7 +85,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
 
                 <fieldset className="sm:col-span-2">
                     <legend className="mb-3 text-sm font-medium text-seveste-text">
-                        O que você procura?
+                        O que você procura? *
                     </legend>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         {clothingNeeds.map((item) => (
@@ -105,13 +106,13 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                 </fieldset>
 
                 <Input
-                    label="Tamanho de roupa"
+                    label="Tamanho de roupa *"
                     name="clothingSize"
                     type="text"
                     placeholder="Ex.: M, G ou 42"
                 />
                 <Input
-                    label="Número do calçado"
+                    label="Número do calçado *"
                     name="shoeSize"
                     type="text"
                     inputMode="numeric"
@@ -123,9 +124,13 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                         type="checkbox"
                         name="privacy"
                         required
-                        className="mt-1 size-4 accent-seveste-green"
+                        className="mt-1 size-4 accent-seveste-green cursor-pointer"
                     />
-                    Li o aviso de privacidade e concordo com o uso dos meus dados para encontrar doações compatíveis.
+                    <Link
+                        className="underline hover:text-seveste-green"
+                        href="/privacy-policy">
+                        Li o aviso de privacidade e concordo com o uso dos meus dados para viabilizar as doações.
+                    </Link>
                 </label>
 
                 <button
