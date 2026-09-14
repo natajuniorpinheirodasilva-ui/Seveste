@@ -7,6 +7,7 @@ import (
 
 func main() {
 	repositories.UsuarioRepo = repositories.NovoRepositorioDeUsuario()
+	repositories.InserirDados()
 
 	router := router.Configurar()
 	router.Run()

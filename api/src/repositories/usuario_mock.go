@@ -68,6 +68,19 @@ func (r *RepositorioDeMemoriaUsuario) BuscarPorTipo(tipo string) ([]models.Usuar
 	return filtrados, nil
 }
 
+func (r *RepositorioDeMemoriaUsuario) BuscarPorEmail(email string) (*models.Usuario, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, u := range r.usuarios {
+		if u.Email == email {
+			return &u, nil
+		}
+	}
+
+	return nil, errors.New("usuario nao encontrado")
+}
+
 func (r *RepositorioDeMemoriaUsuario) Atualizar(ID uint64, novo models.Usuario) (*models.Usuario, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

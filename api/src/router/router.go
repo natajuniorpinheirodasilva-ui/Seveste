@@ -12,6 +12,7 @@ func Configurar() *gin.Engine {
 	v1 := router.Group("/api/v1")
 	{
 		registrarRotasDeUsuario(v1)
+		registrarRotasDeLogin(v1)
 	}
 
 	return router
@@ -25,5 +26,12 @@ func registrarRotasDeUsuario(rg *gin.RouterGroup) {
 		usuarios.POST("/", controllers.CriarUsuario)
 		usuarios.PUT("/:id", controllers.AtualizarUsuario)
 		usuarios.DELETE("/:id", controllers.DeletarUsuario)
+	}
+}
+
+func registrarRotasDeLogin(rg *gin.RouterGroup) {
+	login := rg.Group("/login")
+	{
+		login.POST("/", controllers.Login)
 	}
 }
