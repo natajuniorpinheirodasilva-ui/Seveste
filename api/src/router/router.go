@@ -2,6 +2,7 @@ package router
 
 import (
 	"seveste-api/src/controllers"
+	"seveste-api/src/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,8 +25,11 @@ func registrarRotasDeUsuario(rg *gin.RouterGroup) {
 		usuarios.GET("/", controllers.GetUsuarios)
 		usuarios.GET("/:id", controllers.GetUsuario)
 		usuarios.POST("/", controllers.CriarUsuario)
-		usuarios.PUT("/:id", controllers.AtualizarUsuario)
-		usuarios.DELETE("/:id", controllers.DeletarUsuario)
+		usuarios.Use(middlewares.Autenticar())
+		{
+			usuarios.PUT("/:id", controllers.AtualizarUsuario)
+			usuarios.DELETE("/:id", controllers.DeletarUsuario)
+		}
 	}
 }
 

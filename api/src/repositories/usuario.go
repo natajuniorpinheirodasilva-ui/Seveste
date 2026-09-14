@@ -10,7 +10,7 @@ type UsuarioRepositorio interface {
 	BuscarPorID(ID uint64) (*models.Usuario, error)
 	BuscarPorTipo(tipo string) ([]models.Usuario, error)
 	BuscarPorEmail(email string) (*models.Usuario, error)
-	Atualizar(ID uint64, novo models.Usuario) (*models.Usuario, error)
+	Atualizar(ID uint64, novo models.AtualizarUsuarioInput) (*models.Usuario, error)
 	Deletar(ID uint64) error
 }
 

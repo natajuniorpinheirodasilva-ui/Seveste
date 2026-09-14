@@ -38,7 +38,7 @@ func GerarToken(usuarioID uint64, tipo string) (string, error) {
 func ValidarToken(tokenString string) (*customClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &customClaims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("algoritmo inesperado: %v", token.Header["alg"])
+			return nil, fmt.Errorf("algoritmo de token inesperado: %v", token.Header["alg"])
 		}
 
 		return secretkey, nil

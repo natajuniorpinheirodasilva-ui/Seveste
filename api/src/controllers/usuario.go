@@ -66,7 +66,13 @@ func AtualizarUsuario(c *gin.Context) {
 		return
 	}
 
-	var novo models.Usuario
+	var tokenID = c.GetUint64("usuario_id")
+	if intID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "nao e permitido alterar a conta de outro usuario"})
+		return
+	}
+
+	var novo models.AtualizarUsuarioInput
 	if err = c.ShouldBindJSON(&novo); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
@@ -86,6 +92,12 @@ func DeletarUsuario(c *gin.Context) {
 	var intID, err = strconv.ParseUint(ID, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if intID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "não e permitido excluir a conta de outro usuario"})
 		return
 	}
 

@@ -27,6 +27,18 @@ type Usuario struct {
 	TamanhoCalcado   uint8    `json:"tamanho_calcado"`
 }
 
+type AtualizarUsuarioInput struct {
+	Nome     *string `json:"nome"`
+	Email    *string `json:"email"`
+	Telefone *string `json:"telefone"`
+	UF       *string `json:"uf"`
+	Cidade   *string `json:"cidade"`
+
+	RoupasProcuradas *[]string `json:"roupas_procuradas"`
+	TamanhoRoupa     *string   `json:"tamanho_roupa"`
+	TamanhoCalcado   *uint8    `json:"tamanho_calcado"`
+}
+
 func (u *Usuario) Preparar(etapa string) error {
 	if err := u.formatar(etapa); err != nil {
 		return err
@@ -70,23 +82,23 @@ func (u *Usuario) formatar(etapa string) error {
 // Valida se os campos obrigatórios estão preenchidos e se o tipo de usuário é um dos tipos aceitados
 func (u *Usuario) validar(etapa string) error {
 	if (u.Nome == "") || (u.UF == "") || (u.Cidade == "") || (u.Tipo == "") {
-		return errors.New("todos os campos obrigatórios devem ser preenchidos")
+		return errors.New("todos os campos obrigatorios devem ser preenchidos")
 	}
 
 	if etapa == "cadastro" && u.Senha == "" {
-		return errors.New("a senha é obrigatoria e deve ser preenchida")
+		return errors.New("a senha e obrigatoria e deve ser preenchida")
 	}
 
 	if strings.ToLower(u.Tipo) != TipoDoador && strings.ToLower(u.Tipo) != TipoAcolhido {
-		return errors.New("tipo de usuario inválido. por favor selecione um tipo válido")
+		return errors.New("tipo de usuario invalido. por favor selecione um tipo valido")
 	}
 
 	if u.Tipo == TipoAcolhido {
 		if u.TamanhoRoupa == "" {
-			return errors.New("o tamanho da roupa é obrigatório e deve ser preenchido")
+			return errors.New("o tamanho da roupa e obrigatorio e deve ser preenchido")
 		}
 		if u.TamanhoCalcado == 0 {
-			return errors.New("o tamanho do calçado é obrigatório e deve ser preenchido")
+			return errors.New("o tamanho do calcado e obrigatorio e deve ser preenchido")
 		}
 
 		roupasSemVazias := slices.DeleteFunc(u.RoupasProcuradas, func(s string) bool {

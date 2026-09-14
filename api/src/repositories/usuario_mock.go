@@ -3,6 +3,7 @@ package repositories
 import (
 	"errors"
 	"seveste-api/src/models"
+	"strings"
 	"sync"
 )
 
@@ -81,19 +82,43 @@ func (r *RepositorioDeMemoriaUsuario) BuscarPorEmail(email string) (*models.Usua
 	return nil, errors.New("usuario nao encontrado")
 }
 
-func (r *RepositorioDeMemoriaUsuario) Atualizar(ID uint64, novo models.Usuario) (*models.Usuario, error) {
+func (r *RepositorioDeMemoriaUsuario) Atualizar(ID uint64, input models.AtualizarUsuarioInput) (*models.Usuario, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var _, existe = r.usuarios[ID]
+	var usuario, existe = r.usuarios[ID]
 	if !existe {
 		return nil, errors.New("usuario nao encontrado")
 	}
 
-	novo.ID = ID
+	if input.Nome != nil {
+		usuario.Nome = strings.TrimSpace(*input.Nome)
+	}
+	if input.Email != nil {
+		usuario.Email = strings.TrimSpace(*input.Email)
+	}
+	if input.Telefone != nil {
+		usuario.Telefone = strings.TrimSpace(*input.Telefone)
+	}
+	if input.UF != nil {
+		usuario.UF = strings.TrimSpace(*input.UF)
+	}
+	if input.Cidade != nil {
+		usuario.Cidade = strings.TrimSpace(*input.Cidade)
+	}
+	if input.RoupasProcuradas != nil {
+		usuario.RoupasProcuradas = *input.RoupasProcuradas
+	}
+	if input.TamanhoRoupa != nil {
+		usuario.TamanhoRoupa = strings.TrimSpace(*input.TamanhoRoupa)
+	}
+	if input.TamanhoCalcado != nil {
+		usuario.TamanhoCalcado = *input.TamanhoCalcado
+	}
 
-	r.usuarios[ID] = novo
-	return &novo, nil
+	r.usuarios[ID] = usuario
+
+	return &usuario, nil
 }
 
 func (r *RepositorioDeMemoriaUsuario) Deletar(ID uint64) error {
