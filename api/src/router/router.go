@@ -14,6 +14,7 @@ func Configurar() *gin.Engine {
 	{
 		registrarRotasDeUsuario(v1)
 		registrarRotasDeLogin(v1)
+		registrarRotasDeDoacao(v1)
 	}
 
 	return router
@@ -37,5 +38,17 @@ func registrarRotasDeLogin(rg *gin.RouterGroup) {
 	login := rg.Group("/login")
 	{
 		login.POST("/", controllers.Login)
+	}
+}
+
+func registrarRotasDeDoacao(rg *gin.RouterGroup) {
+	doacoes := rg.Group("/doacoes")
+	{
+		doacoes.GET("/", controllers.BuscarDoacoes)
+		doacoes.GET("/:id", controllers.BuscarDoacao)
+		doacoes.Use(middlewares.Autenticar())
+		{
+			doacoes.POST("/", controllers.CriarDoacao)
+		}
 	}
 }

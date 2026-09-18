@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"net/http"
-	"seveste-api/src/repositories"
+	"seveste-api/src/repositories/repo_usuario"
 	"seveste-api/src/seguranca"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +21,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var usuario, err = repositories.UsuarioRepo.BuscarPorEmail(credenciais.Email)
+	var usuario, err = repo_usuario.UsuarioRepo.BuscarPorEmail(credenciais.Email)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"erro": "credenciais invalidas"})
 		return

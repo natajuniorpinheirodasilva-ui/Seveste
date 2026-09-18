@@ -3,14 +3,14 @@ package controllers
 import (
 	"net/http"
 	"seveste-api/src/models"
-	"seveste-api/src/repositories"
+	"seveste-api/src/repositories/repo_usuario"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func GetUsuarios(c *gin.Context) {
-	usuarios, err := repositories.UsuarioRepo.BuscarTodos()
+	usuarios, err := repo_usuario.UsuarioRepo.BuscarTodos()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 		return
@@ -27,7 +27,7 @@ func GetUsuario(c *gin.Context) {
 		return
 	}
 
-	usuario, err := repositories.UsuarioRepo.BuscarPorID(intID)
+	usuario, err := repo_usuario.UsuarioRepo.BuscarPorID(intID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 		return
@@ -49,7 +49,7 @@ func CriarUsuario(c *gin.Context) {
 		return
 	}
 
-	criado, err := repositories.UsuarioRepo.Criar(&usuario)
+	criado, err := repo_usuario.UsuarioRepo.Criar(&usuario)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
@@ -78,7 +78,7 @@ func AtualizarUsuario(c *gin.Context) {
 		return
 	}
 
-	atualizado, err := repositories.UsuarioRepo.Atualizar(intID, novo)
+	atualizado, err := repo_usuario.UsuarioRepo.Atualizar(intID, novo)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
@@ -101,7 +101,7 @@ func DeletarUsuario(c *gin.Context) {
 		return
 	}
 
-	err = repositories.UsuarioRepo.Deletar(intID)
+	err = repo_usuario.UsuarioRepo.Deletar(intID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return

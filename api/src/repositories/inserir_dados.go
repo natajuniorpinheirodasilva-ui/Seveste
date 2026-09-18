@@ -3,6 +3,8 @@ package repositories
 import (
 	"log"
 	"seveste-api/src/models"
+	"seveste-api/src/repositories/repo_doacao"
+	"seveste-api/src/repositories/repo_usuario"
 )
 
 var usuarios = []models.Usuario{
@@ -48,6 +50,29 @@ var usuarios = []models.Usuario{
 	},
 }
 
+var doacoes = []models.Doacao{
+	{
+		Titulo:    "Camiseta azul",
+		Descricao: "Camiseta azul tamanho G levemente usada",
+		Categoria: "camiseta",
+		Tamanho:   "G",
+		Estado:    "usada",
+		Status:    "disponivel",
+
+		UsuarioID: 1,
+	},
+	{
+		Titulo:    "Calça jeans preta",
+		Descricao: "Eu comprei essa calça faz um tempo mas não coube em mim",
+		Categoria: "calca",
+		Tamanho:   "M",
+		Estado:    "nova",
+		Status:    "disponivel",
+
+		UsuarioID: 4,
+	},
+}
+
 func InserirDados() {
 	for _, usuario := range usuarios {
 		err := usuario.Preparar("cadastro")
@@ -55,7 +80,13 @@ func InserirDados() {
 			log.Fatal(err)
 		}
 
-		if _, err = UsuarioRepo.Criar(&usuario); err != nil {
+		if _, err = repo_usuario.UsuarioRepo.Criar(&usuario); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	for _, doacao := range doacoes {
+		if _, err := repo_doacao.DoacaoRepo.Criar(&doacao); err != nil {
 			log.Fatal(err)
 		}
 	}

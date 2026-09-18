@@ -1,4 +1,4 @@
-package repositories
+package repo_usuario
 
 import (
 	"seveste-api/src/models"
