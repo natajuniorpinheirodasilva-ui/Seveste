@@ -28,8 +28,11 @@ func registrarRotasDeUsuario(rg *gin.RouterGroup) {
 		usuarios.POST("/", controllers.CriarUsuario)
 		usuarios.Use(middlewares.Autenticar())
 		{
-			usuarios.PUT("/:id", controllers.AtualizarUsuario)
-			usuarios.DELETE("/:id", controllers.DeletarUsuario)
+			usuarios.Use(middlewares.Autorizacao())
+			{
+				usuarios.PATCH("/:id", controllers.AtualizarUsuario)
+				usuarios.DELETE("/:id", controllers.DeletarUsuario)
+			}
 		}
 	}
 }

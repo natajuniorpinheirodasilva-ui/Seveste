@@ -27,18 +27,14 @@ type Usuario struct {
 	TamanhoCalcado   uint8    `json:"tamanho_calcado"`
 }
 
-type AtualizarUsuarioInput struct {
+type AtualizacaoUsuario struct {
 	Nome     *string `json:"nome"`
-	Email    *string `json:"email"`
 	Telefone *string `json:"telefone"`
 	UF       *string `json:"uf"`
 	Cidade   *string `json:"cidade"`
-
-	RoupasProcuradas *[]string `json:"roupas_procuradas"`
-	TamanhoRoupa     *string   `json:"tamanho_roupa"`
-	TamanhoCalcado   *uint8    `json:"tamanho_calcado"`
 }
 
+// formata os campos e valida se eles estão corretos
 func (u *Usuario) Preparar(etapa string) error {
 	if err := u.formatar(etapa); err != nil {
 		return err
@@ -61,6 +57,7 @@ func (u *Usuario) formatar(etapa string) error {
 	u.UF = strings.TrimSpace(u.UF)
 	u.Cidade = strings.TrimSpace(u.Cidade)
 	u.Tipo = strings.TrimSpace(u.Tipo)
+	u.Tipo = strings.ToLower(u.Tipo)
 
 	for index, s := range u.RoupasProcuradas {
 		s = strings.TrimSpace(s)
@@ -85,11 +82,15 @@ func (u *Usuario) validar(etapa string) error {
 		return errors.New("todos os campos obrigatorios devem ser preenchidos")
 	}
 
+	if len(u.UF) != 2 {
+		return errors.New("o campo 'uf' deve ter exatamente 2 caracteres")
+	}
+
 	if etapa == "cadastro" && u.Senha == "" {
 		return errors.New("a senha e obrigatoria e deve ser preenchida")
 	}
 
-	if strings.ToLower(u.Tipo) != TipoDoador && strings.ToLower(u.Tipo) != TipoAcolhido {
+	if u.Tipo != TipoDoador && u.Tipo != TipoAcolhido {
 		return errors.New("tipo de usuario invalido. por favor selecione um tipo valido")
 	}
 
@@ -109,6 +110,48 @@ func (u *Usuario) validar(etapa string) error {
 		}
 
 		u.RoupasProcuradas = roupasSemVazias
+	}
+
+	return nil
+}
+
+func (u *Usuario) Mesclar(dados AtualizacaoUsuario) error {
+	alteracaoFeita := false
+
+	if dados.Nome != nil {
+		nome := strings.TrimSpace(*dados.Nome)
+		if nome == "" {
+			return errors.New("o campo 'nome' nao pode estar vazio")
+		}
+		u.Nome = nome
+		alteracaoFeita = true
+	}
+
+	if dados.Telefone != nil {
+		u.Telefone = strings.TrimSpace(*dados.Telefone)
+		alteracaoFeita = true
+	}
+
+	if dados.UF != nil {
+		uf := strings.ToUpper(strings.TrimSpace(*dados.UF))
+		if len(uf) != 2 {
+			return errors.New("o campo 'uf' deve conter exatamente 2 caracteres")
+		}
+		u.UF = uf
+		alteracaoFeita = true
+	}
+
+	if dados.Cidade != nil {
+		cidade := strings.TrimSpace(*dados.Cidade)
+		if cidade == "" {
+			return errors.New("o campo 'cidade' nao pode estar vazio")
+		}
+		u.Cidade = cidade
+		alteracaoFeita = true
+	}
+
+	if !alteracaoFeita {
+		return errors.New("nenhum dado fornecido para atualizacao")
 	}
 
 	return nil

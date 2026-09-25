@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type DoacaoInput struct {
+type doacaoInput struct {
 	Titulo    string `json:"titulo" binding:"required"`
 	Descricao string `json:"descricao" binding:"required"`
 	Categoria string `json:"categoria" binding:"required"`
@@ -46,7 +46,7 @@ func BuscarDoacao(c *gin.Context) {
 }
 
 func CriarDoacao(c *gin.Context) {
-	var input DoacaoInput
+	var input doacaoInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
@@ -61,6 +61,11 @@ func CriarDoacao(c *gin.Context) {
 	nova.Estado = input.Estado
 	nova.Status = "criada"
 
+	var usuarioTipo string = c.GetString("usuario_tipo")
+	if usuarioTipo != "doador" {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "somente doadores podem cadastrar uma nova doação"})
+		return
+	}
 	var usuarioID uint64 = c.GetUint64("usuario_id")
 	nova.UsuarioID = usuarioID
 

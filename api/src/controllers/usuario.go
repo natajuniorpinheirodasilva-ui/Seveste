@@ -37,19 +37,19 @@ func GetUsuario(c *gin.Context) {
 }
 
 func CriarUsuario(c *gin.Context) {
-	var usuario models.Usuario
+	var novo models.Usuario
 
-	if err := c.ShouldBindJSON(&usuario); err != nil {
+	if err := c.ShouldBindJSON(&novo); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	if err := usuario.Preparar("cadastro"); err != nil {
+	if err := novo.Preparar("cadastro"); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	criado, err := repo_usuario.UsuarioRepo.Criar(&usuario)
+	criado, err := repo_usuario.UsuarioRepo.Criar(&novo)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
@@ -59,26 +59,26 @@ func CriarUsuario(c *gin.Context) {
 }
 
 func AtualizarUsuario(c *gin.Context) {
-	var ID string = c.Param("id")
-	var intID, err = strconv.ParseUint(ID, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
-		return
-	}
+	var targetID uint64 = c.GetUint64("target_usuario_id")
 
-	var tokenID = c.GetUint64("usuario_id")
-	if intID != tokenID {
-		c.JSON(http.StatusForbidden, gin.H{"erro": "nao e permitido alterar a conta de outro usuario"})
-		return
-	}
-
-	var novo models.AtualizarUsuarioInput
-	if err = c.ShouldBindJSON(&novo); err != nil {
+	var input models.AtualizacaoUsuario
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
-	atualizado, err := repo_usuario.UsuarioRepo.Atualizar(intID, novo)
+	usuario, err := repo_usuario.UsuarioRepo.BuscarPorID(targetID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "usuario nao encontrado"})
+		return
+	}
+
+	if err = usuario.Mesclar(input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	atualizado, err := repo_usuario.UsuarioRepo.Salvar(targetID, usuario)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
@@ -88,20 +88,9 @@ func AtualizarUsuario(c *gin.Context) {
 }
 
 func DeletarUsuario(c *gin.Context) {
-	var ID string = c.Param("id")
-	var intID, err = strconv.ParseUint(ID, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
-		return
-	}
+	var targetID uint64 = c.GetUint64("target_usuario_id")
 
-	var tokenID = c.GetUint64("usuario_id")
-	if intID != tokenID {
-		c.JSON(http.StatusForbidden, gin.H{"erro": "não e permitido excluir a conta de outro usuario"})
-		return
-	}
-
-	err = repo_usuario.UsuarioRepo.Deletar(intID)
+	err := repo_usuario.UsuarioRepo.Deletar(targetID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return

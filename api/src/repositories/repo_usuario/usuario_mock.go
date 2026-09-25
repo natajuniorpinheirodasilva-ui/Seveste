@@ -3,7 +3,6 @@ package repo_usuario
 import (
 	"errors"
 	"seveste-api/src/models"
-	"strings"
 	"sync"
 )
 
@@ -82,43 +81,18 @@ func (r *RepositorioDeMemoriaUsuario) BuscarPorEmail(email string) (*models.Usua
 	return nil, errors.New("usuario nao encontrado")
 }
 
-func (r *RepositorioDeMemoriaUsuario) Atualizar(ID uint64, input models.AtualizarUsuarioInput) (*models.Usuario, error) {
+func (r *RepositorioDeMemoriaUsuario) Salvar(ID uint64, novo *models.Usuario) (*models.Usuario, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var usuario, existe = r.usuarios[ID]
+	var _, existe = r.usuarios[ID]
 	if !existe {
 		return nil, errors.New("usuario nao encontrado")
 	}
 
-	if input.Nome != nil {
-		usuario.Nome = strings.TrimSpace(*input.Nome)
-	}
-	if input.Email != nil {
-		usuario.Email = strings.TrimSpace(*input.Email)
-	}
-	if input.Telefone != nil {
-		usuario.Telefone = strings.TrimSpace(*input.Telefone)
-	}
-	if input.UF != nil {
-		usuario.UF = strings.TrimSpace(*input.UF)
-	}
-	if input.Cidade != nil {
-		usuario.Cidade = strings.TrimSpace(*input.Cidade)
-	}
-	if input.RoupasProcuradas != nil {
-		usuario.RoupasProcuradas = *input.RoupasProcuradas
-	}
-	if input.TamanhoRoupa != nil {
-		usuario.TamanhoRoupa = strings.TrimSpace(*input.TamanhoRoupa)
-	}
-	if input.TamanhoCalcado != nil {
-		usuario.TamanhoCalcado = *input.TamanhoCalcado
-	}
+	r.usuarios[ID] = *novo
 
-	r.usuarios[ID] = usuario
-
-	return &usuario, nil
+	return novo, nil
 }
 
 func (r *RepositorioDeMemoriaUsuario) Deletar(ID uint64) error {
