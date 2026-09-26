@@ -6,20 +6,20 @@ import (
 	"sync"
 )
 
-type RepositorioDeMemoriaDocao struct {
+type RepositorioDeMemoriaDoacao struct {
 	mu      sync.RWMutex
 	doacoes map[uint64]models.Doacao
 	proxID  uint64
 }
 
-func NovoRepositorioDeDoacao() *RepositorioDeMemoriaDocao {
-	return &RepositorioDeMemoriaDocao{
+func NovoRepositorioDeDoacao() *RepositorioDeMemoriaDoacao {
+	return &RepositorioDeMemoriaDoacao{
 		doacoes: make(map[uint64]models.Doacao),
 		proxID:  1,
 	}
 }
 
-func (r *RepositorioDeMemoriaDocao) Criar(d *models.Doacao) (*models.Doacao, error) {
+func (r *RepositorioDeMemoriaDoacao) Criar(d *models.Doacao) (*models.Doacao, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -30,7 +30,7 @@ func (r *RepositorioDeMemoriaDocao) Criar(d *models.Doacao) (*models.Doacao, err
 	return d, nil
 }
 
-func (r *RepositorioDeMemoriaDocao) BuscarTodas() ([]models.Doacao, error) {
+func (r *RepositorioDeMemoriaDoacao) BuscarTodas() ([]models.Doacao, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -42,7 +42,7 @@ func (r *RepositorioDeMemoriaDocao) BuscarTodas() ([]models.Doacao, error) {
 	return doacoes, nil
 }
 
-func (r *RepositorioDeMemoriaDocao) BuscarPorID(ID uint64) (*models.Doacao, error) {
+func (r *RepositorioDeMemoriaDoacao) BuscarPorID(ID uint64) (*models.Doacao, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -52,4 +52,17 @@ func (r *RepositorioDeMemoriaDocao) BuscarPorID(ID uint64) (*models.Doacao, erro
 	}
 
 	return &d, nil
+}
+
+func (r *RepositorioDeMemoriaDoacao) Deletar(ID uint64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var _, existe = r.doacoes[ID]
+	if !existe {
+		return errors.New("doacao nao encontrada")
+	}
+
+	delete(r.doacoes, ID)
+	return nil
 }

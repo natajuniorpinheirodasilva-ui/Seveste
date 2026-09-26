@@ -83,3 +83,25 @@ func CriarDoacao(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"criado": criado})
 }
+
+func DeletarDoacao(c *gin.Context) {
+	var stringID string = c.Param("id")
+	doacaoID, err := strconv.ParseUint(stringID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	_, err = repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	if err = repo_doacao.DoacaoRepo.Deletar(doacaoID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}
