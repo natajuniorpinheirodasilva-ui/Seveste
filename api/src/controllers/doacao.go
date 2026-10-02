@@ -77,11 +77,45 @@ func CriarDoacao(c *gin.Context) {
 
 	criado, err := repo_doacao.DoacaoRepo.Criar(&nova)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"criado": criado})
+}
+
+func AtualizarDoacao(c *gin.Context) {
+	var stringID = c.Param("id")
+	doacaoID, err := strconv.ParseUint(stringID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var input *models.AtualizacaoDoacao
+	if err = c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	if err = doacao.Mesclar(*input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	atualizada, err := repo_doacao.DoacaoRepo.Salvar(doacaoID, doacao)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, atualizada)
 }
 
 func DeletarDoacao(c *gin.Context) {

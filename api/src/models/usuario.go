@@ -115,6 +115,7 @@ func (u *Usuario) validar(etapa string) error {
 	return nil
 }
 
+// altera dos dados do usuário se eles forem válidos
 func (u *Usuario) Mesclar(dados AtualizacaoUsuario) error {
 	alteracaoFeita := false
 

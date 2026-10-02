@@ -54,6 +54,19 @@ func (r *RepositorioDeMemoriaDoacao) BuscarPorID(ID uint64) (*models.Doacao, err
 	return &d, nil
 }
 
+func (r *RepositorioDeMemoriaDoacao) Salvar(ID uint64, nova *models.Doacao) (*models.Doacao, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var _, existe = r.doacoes[ID]
+	if !existe {
+		return nil, errors.New("doação não encontrada")
+	}
+	r.doacoes[ID] = *nova
+
+	return nova, nil
+}
+
 func (r *RepositorioDeMemoriaDoacao) Deletar(ID uint64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

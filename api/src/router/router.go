@@ -52,10 +52,8 @@ func registrarRotasDeDoacao(rg *gin.RouterGroup) {
 		doacoes.Use(middlewares.Autenticar())
 		{
 			doacoes.POST("/", controllers.CriarDoacao)
-			doacoes.Use(middlewares.Autorizacao())
-			{
-				doacoes.DELETE("/:id", controllers.DeletarDoacao)
-			}
+			doacoes.PATCH("/:id", controllers.AtualizarDoacao)
+			doacoes.DELETE("/:id", controllers.DeletarDoacao)
 		}
 	}
 }
