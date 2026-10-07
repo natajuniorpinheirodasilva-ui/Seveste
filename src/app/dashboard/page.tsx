@@ -38,8 +38,8 @@ export default function Dashboard() {
                     <button
                         onClick={() => setActiveTab("ativos")}
                         className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === "ativos"
-                                ? "border-seveste-green text-seveste-green"
-                                : "border-transparent text-seveste-muted hover:text-seveste-dark"
+                            ? "border-seveste-green text-seveste-green"
+                            : "border-transparent text-seveste-muted hover:text-seveste-dark"
                             }`}
                     >
                         <Package className="h-4 w-4" />
@@ -48,8 +48,8 @@ export default function Dashboard() {
                     <button
                         onClick={() => setActiveTab("historico")}
                         className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === "historico"
-                                ? "border-seveste-green text-seveste-green"
-                                : "border-transparent text-seveste-muted hover:text-seveste-dark"
+                            ? "border-seveste-green text-seveste-green"
+                            : "border-transparent text-seveste-muted hover:text-seveste-dark"
                             }`}
                     >
                         <History className="h-4 w-4" />
@@ -58,8 +58,8 @@ export default function Dashboard() {
                     <button
                         onClick={() => setActiveTab("salvos")}
                         className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === "salvos"
-                                ? "border-seveste-green text-seveste-green"
-                                : "border-transparent text-seveste-muted hover:text-seveste-dark"
+                            ? "border-seveste-green text-seveste-green"
+                            : "border-transparent text-seveste-muted hover:text-seveste-dark"
                             }`}
                     >
                         <Heart className="h-4 w-4" />
@@ -135,7 +135,7 @@ export default function Dashboard() {
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                             {[1, 2].map((item) => (
                                 <Link href={`/product/${item}`} key={item} className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:border-seveste-green">
-                                    <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-slate-100">
+                                    <div className="relative flex aspect-4/3 w-full items-center justify-center bg-slate-100">
                                         <ImageIcon className="h-8 w-8 text-slate-300 transition-transform group-hover:scale-110" />
                                         <button className="absolute right-3 top-3 text-red-500">
                                             <Heart className="h-5 w-5 fill-current" />

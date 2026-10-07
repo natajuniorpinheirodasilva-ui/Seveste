@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Bug, Home, PlusCircle, Search, Package, User, ChartBar, Heart, X } from "lucide-react"
+import { Bug, Home, PlusCircle, Search, Package, User, ChartBar, Heart, X, AlertCircleIcon } from "lucide-react"
 
 export default function DebugNavigator() {
     const [isOpen, setIsOpen] = useState(true)
@@ -82,6 +82,14 @@ export default function DebugNavigator() {
                     >
                         <Heart className="h-3.5 w-3.5" />
                         Doação concluída.
+                    </Link>
+
+                    <Link
+                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
+                        href="/404"
+                    >
+                        <AlertCircleIcon className="h-3.5 w-3.5" />
+                        404
                     </Link>
 
                     <div className="ml-2 h-6 w-px bg-slate-700 hidden sm:block"></div>
