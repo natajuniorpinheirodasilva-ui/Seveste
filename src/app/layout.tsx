@@ -1,3 +1,5 @@
+import DebugNavigator from "@/components/DebugNavigator"
+import ChatBubble from "@/components/ChatBubble";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -30,7 +32,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} ${cormorant.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body
+        className="min-h-full flex flex-col"
+      >
+        {children}
+        <DebugNavigator />
+        <ChatBubble />
+      </body>
     </html>
   );
 }
