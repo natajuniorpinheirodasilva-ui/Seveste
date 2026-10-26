@@ -1,5 +1,6 @@
 import { ArrowLeft, HandHeart } from "lucide-react"
 import Input from "./Input"
+import Link from "next/link"
 
 type RecipientFormProps = {
     onBack: () => void
@@ -9,18 +10,18 @@ const clothingNeeds = ["Roupas", "Calçados", "Agasalhos", "Acessórios"]
 
 export default function RecipientForm({ onBack }: RecipientFormProps) {
     return (
-        <section className="mx-auto w-full max-w-2xl rounded-3xl border border-seveste-sage/30 bg-seveste-white p-6 shadow-[0_24px_70px_rgba(23,63,53,0.12)] sm:p-10">
+        <section className="mx-auto w-full max-w-2xl border border-seveste-sage/30 bg-seveste-white p-6 shadow-[0_24px_70px_rgba(23,63,53,0.12)] sm:p-10">
             <button
                 type="button"
                 onClick={onBack}
-                className="mb-8 flex cursor-pointer items-center gap-2 text-sm font-medium text-seveste-muted transition hover:text-seveste-dark"
+                className="mb-8 flex cursor-pointer items-center gap-2 text-sm font-medium text-seveste-muted transition hover:text-seveste-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-seveste-green"
             >
                 <ArrowLeft size={18} />
                 Voltar
             </button>
 
             <div className="mb-8 flex items-start gap-4">
-                <span className="rounded-2xl bg-seveste-accent p-3 text-seveste-dark">
+                <span className="bg-seveste-accent p-3 text-seveste-dark">
                     <HandHeart size={28} />
                 </span>
                 <div>
@@ -39,7 +40,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
             <form className="grid gap-5 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                     <Input
-                        label="Nome completo"
+                        label="Nome completo *"
                         name="name"
                         type="text"
                         autoComplete="name"
@@ -48,7 +49,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     />
                 </div>
                 <Input
-                    label="E-mail"
+                    label="E-mail *"
                     name="email"
                     type="email"
                     autoComplete="email"
@@ -56,7 +57,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     required
                 />
                 <Input
-                    label="Senha"
+                    label="Senha *"
                     name="password"
                     type="password"
                     autoComplete="new-password"
@@ -65,7 +66,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     required
                 />
                 <Input
-                    label="Cidade"
+                    label="Cidade *"
                     name="city"
                     type="text"
                     autoComplete="address-level2"
@@ -73,7 +74,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     required
                 />
                 <Input
-                    label="Estado"
+                    label="Estado *"
                     name="state"
                     type="text"
                     autoComplete="address-level1"
@@ -84,13 +85,13 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
 
                 <fieldset className="sm:col-span-2">
                     <legend className="mb-3 text-sm font-medium text-seveste-text">
-                        O que você procura?
+                        O que você procura? *
                     </legend>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         {clothingNeeds.map((item) => (
                             <label
                                 key={item}
-                                className="flex cursor-pointer items-center gap-2 rounded-xl border border-seveste-sage/50 bg-seveste-cream px-3 py-3 text-sm text-seveste-text transition hover:border-seveste-green"
+                                className="flex cursor-pointer items-center gap-2 border border-seveste-sage/50 bg-seveste-cream px-3 py-3 text-sm text-seveste-text transition hover:border-seveste-green"
                             >
                                 <input
                                     type="checkbox"
@@ -105,13 +106,13 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                 </fieldset>
 
                 <Input
-                    label="Tamanho de roupa"
+                    label="Tamanho de roupa *"
                     name="clothingSize"
                     type="text"
                     placeholder="Ex.: M, G ou 42"
                 />
                 <Input
-                    label="Número do calçado"
+                    label="Número do calçado *"
                     name="shoeSize"
                     type="text"
                     inputMode="numeric"
@@ -123,14 +124,18 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                         type="checkbox"
                         name="privacy"
                         required
-                        className="mt-1 size-4 accent-seveste-green"
+                        className="mt-1 size-4 accent-seveste-green cursor-pointer"
                     />
-                    Li o aviso de privacidade e concordo com o uso dos meus dados para encontrar doações compatíveis.
+                    <Link
+                        className="underline hover:text-seveste-green"
+                        href="/privacy-policy">
+                        Li o aviso de privacidade e concordo com o uso dos meus dados para viabilizar as doações.
+                    </Link>
                 </label>
 
                 <button
                     type="submit"
-                    className="mt-2 cursor-pointer rounded-xl bg-seveste-green px-6 py-3 font-semibold text-seveste-white transition hover:-translate-y-0.5 hover:bg-seveste-dark sm:col-span-2"
+                    className="mt-2 cursor-pointer border border-seveste-green bg-seveste-green px-6 py-3 font-semibold text-seveste-white shadow-sm transition duration-200 hover:-translate-y-px hover:border-seveste-dark hover:bg-seveste-dark hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seveste-green sm:col-span-2"
                 >
                     Continuar como acolhido
                 </button>
