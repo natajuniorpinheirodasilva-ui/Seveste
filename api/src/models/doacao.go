@@ -6,7 +6,7 @@ import (
 )
 
 type Doacao struct {
-	ID        uint64 `json:"id"`
+	ID        uint64 `json:"id_doacao"`
 	Titulo    string `json:"titulo" binding:"required"`
 	Descricao string `json:"descricao" binding:"required"`
 	Categoria string `json:"categoria" binding:"required"`
