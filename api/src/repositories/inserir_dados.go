@@ -4,7 +4,9 @@ import (
 	"log"
 	"seveste-api/src/models"
 	"seveste-api/src/repositories/repo_doacao"
+	"seveste-api/src/repositories/repo_solicitacao"
 	"seveste-api/src/repositories/repo_usuario"
+	"time"
 )
 
 var usuarios = []models.Usuario{
@@ -73,6 +75,33 @@ var doacoes = []models.Doacao{
 	},
 }
 
+var solicitacoes = []models.Solicitacao{
+	{
+		Status:    "PENDENTE",
+		CriadoEm:  time.Now(),
+		IDDoacao:  1,
+		IDUsuario: 2,
+	},
+	{
+		Status:    "ACEITA",
+		CriadoEm:  time.Now(),
+		IDDoacao:  1,
+		IDUsuario: 3,
+	},
+	{
+		Status:    "RECUSADA",
+		CriadoEm:  time.Now(),
+		IDDoacao:  1,
+		IDUsuario: 2,
+	},
+	{
+		Status:    "PENDENTE",
+		CriadoEm:  time.Now(),
+		IDDoacao:  2,
+		IDUsuario: 3,
+	},
+}
+
 func InserirDados() {
 	for _, usuario := range usuarios {
 		err := usuario.Preparar("cadastro")
@@ -87,6 +116,12 @@ func InserirDados() {
 
 	for _, doacao := range doacoes {
 		if _, err := repo_doacao.DoacaoRepo.Criar(&doacao); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	for _, solicitacao := range solicitacoes {
+		if _, err := repo_solicitacao.SolicitacaoRepo.Criar(&solicitacao); err != nil {
 			log.Fatal(err)
 		}
 	}
