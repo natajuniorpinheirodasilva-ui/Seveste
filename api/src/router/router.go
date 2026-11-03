@@ -63,5 +63,10 @@ func registrarRotasDeSolicitacao(rg *gin.RouterGroup) {
 	solicitacoes := rg.Group("/solicitacoes")
 	{
 		solicitacoes.GET("/:id", controllers.BuscarSolicitacao)
+
+		solicitacoes.Use(middlewares.Autenticar())
+		{
+			solicitacoes.POST("/", controllers.CriarSolicitacao)
+		}
 	}
 }

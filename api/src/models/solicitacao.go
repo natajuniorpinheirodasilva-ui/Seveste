@@ -10,9 +10,9 @@ import (
 type Solicitacao struct {
 	ID        uint64    `json:"id_solicitacao"`
 	Status    string    `json:"status" binding:"required"`
-	CriadoEm  time.Time `json:"criado_em" binding:"required"`
+	CriadoEm  time.Time `json:"criado_em"`
 	IDDoacao  uint64    `json:"id_doacao" binding:"required"`
-	IDUsuario uint64    `json:"id_usuario" binding:"required"`
+	IDUsuario uint64    `json:"id_usuario"`
 }
 
 func (s *Solicitacao) Preparar() error {
