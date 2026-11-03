@@ -77,7 +77,7 @@ func (d *Doacao) Mesclar(dados AtualizacaoDoacao) error {
 	}
 
 	if dados.Categoria != nil {
-		categoria := strings.TrimSpace(*dados.Descricao)
+		categoria := strings.TrimSpace(*dados.Categoria)
 		if categoria == "" {
 			return errors.New("o campo 'Categoria' não pode estar vazio")
 		}
