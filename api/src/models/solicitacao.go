@@ -30,8 +30,19 @@ func (s *Solicitacao) formatar() {
 }
 
 func (s *Solicitacao) validar() error {
-	statusPermitidos := []string{"PENDENTE", "ACEITA", "RECUSADA"}
+	if s.IDDoacao == 0 {
+		return errors.New("o id_doacao e obrigatorio e deve ser valido")
+	}
 
+	if s.IDUsuario == 0 {
+		return errors.New("o id_usuario e obrigatorio e deve ser valido")
+	}
+
+	if s.Status == "" {
+		return errors.New("o campo 'status' e obrigatorio")
+	}
+
+	statusPermitidos := []string{"PENDENTE", "ACEITA", "RECUSADA"}
 	if !slices.Contains(statusPermitidos, s.Status) {
 		return errors.New(`status invalido para a solicitadao, permitidos: ["PENDENTE", "ACEITA", "RECUSADA"]`)
 	}
