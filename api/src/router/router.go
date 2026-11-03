@@ -15,6 +15,7 @@ func Configurar() *gin.Engine {
 		registrarRotasDeUsuario(v1)
 		registrarRotasDeLogin(v1)
 		registrarRotasDeDoacao(v1)
+		registrarRotasDeSolicitacao(v1)
 	}
 
 	return router
@@ -55,5 +56,12 @@ func registrarRotasDeDoacao(rg *gin.RouterGroup) {
 			doacoes.PATCH("/:id", controllers.AtualizarDoacao)
 			doacoes.DELETE("/:id", controllers.DeletarDoacao)
 		}
+	}
+}
+
+func registrarRotasDeSolicitacao(rg *gin.RouterGroup) {
+	solicitacoes := rg.Group("/solicitacoes")
+	{
+		solicitacoes.GET("/:id", controllers.BuscarSolicitacao)
 	}
 }
