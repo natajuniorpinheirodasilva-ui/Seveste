@@ -11,7 +11,6 @@ import (
 )
 
 type solicitacaoInput struct {
-	Status   string `json:"status" binding:"required"`
 	IDDoacao uint64 `json:"id_doacao" binding:"required"`
 }
 
@@ -42,7 +41,7 @@ func CriarSolicitacao(c *gin.Context) {
 	}
 
 	var novo models.Solicitacao
-	novo.Status = input.Status
+	novo.Status = "PENDENTE"
 	novo.CriadoEm = time.Now()
 	novo.IDDoacao = input.IDDoacao
 	novo.IDUsuario = c.GetUint64("usuario_id")
@@ -63,4 +62,27 @@ func CriarSolicitacao(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, criada)
+}
+
+func DeletarSolicitacao(c *gin.Context) {
+	// TODO: verificar se o usuário que mandou a requisição é o dono da solicitação
+	paramID := c.Param("id")
+	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	_, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	if err = repo_solicitacao.SolicitacaoRepo.Deletar(solicitacaoID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
 }

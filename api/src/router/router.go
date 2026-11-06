@@ -67,6 +67,7 @@ func registrarRotasDeSolicitacao(rg *gin.RouterGroup) {
 		solicitacoes.Use(middlewares.Autenticar())
 		{
 			solicitacoes.POST("/", controllers.CriarSolicitacao)
+			solicitacoes.DELETE("/:id", controllers.DeletarSolicitacao)
 		}
 	}
 }
