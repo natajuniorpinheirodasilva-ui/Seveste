@@ -10,9 +10,9 @@ import (
 type Solicitacao struct {
 	ID        uint64    `json:"id_solicitacao"`
 	Status    string    `json:"status" binding:"required"`
-	CriadoEm  time.Time `json:"criado_em"`
+	CriadoEm  time.Time `json:"criado_em" binding:"required"`
 	IDDoacao  uint64    `json:"id_doacao" binding:"required"`
-	IDUsuario uint64    `json:"id_usuario"`
+	IDUsuario uint64    `json:"id_usuario" binding:"required"`
 }
 
 func (s *Solicitacao) Preparar() error {
@@ -36,10 +36,6 @@ func (s *Solicitacao) validar() error {
 
 	if s.IDUsuario == 0 {
 		return errors.New("o id_usuario e obrigatorio e deve ser valido")
-	}
-
-	if s.Status == "" {
-		return errors.New("o campo 'status' e obrigatorio")
 	}
 
 	statusPermitidos := []string{"PENDENTE", "ACEITA", "RECUSADA"}

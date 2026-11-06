@@ -10,6 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type solicitacaoInput struct {
+	Status   string `json:"status" binding:"required"`
+	IDDoacao uint64 `json:"id_doacao" binding:"required"`
+}
+
 func BuscarSolicitacao(c *gin.Context) {
 	paramID := c.Param("id")
 	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
@@ -29,15 +34,19 @@ func BuscarSolicitacao(c *gin.Context) {
 }
 
 func CriarSolicitacao(c *gin.Context) {
-	var novo models.Solicitacao
+	var input solicitacaoInput
 
-	if err := c.ShouldBindJSON(&novo); err != nil {
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
+	var novo models.Solicitacao
+	novo.Status = input.Status
 	novo.CriadoEm = time.Now()
+	novo.IDDoacao = input.IDDoacao
 	novo.IDUsuario = c.GetUint64("usuario_id")
+
 	if _, err := repo_solicitacao.SolicitacaoRepo.BuscarPorID(novo.IDDoacao); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "a doacao selecionada para essa solicitacao nao existe"})
 		return
