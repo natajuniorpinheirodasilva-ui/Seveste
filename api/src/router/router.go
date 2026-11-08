@@ -52,6 +52,8 @@ func registrarRotasDeDoacao(rg *gin.RouterGroup) {
 		doacoes.GET("/:id", controllers.BuscarDoacao)
 		doacoes.Use(middlewares.Autenticar())
 		{
+			doacoes.GET("/:id/solicitacoes", controllers.BuscarSolicitacoesPorDoacao)
+
 			doacoes.POST("/", controllers.CriarDoacao)
 			doacoes.PATCH("/:id", controllers.AtualizarDoacao)
 			doacoes.DELETE("/:id", controllers.DeletarDoacao)
@@ -66,6 +68,7 @@ func registrarRotasDeSolicitacao(rg *gin.RouterGroup) {
 
 		solicitacoes.Use(middlewares.Autenticar())
 		{
+			solicitacoes.GET("/minhas", controllers.BuscarSolicitacoesPorUsuario)
 			solicitacoes.POST("/", controllers.CriarSolicitacao)
 			solicitacoes.DELETE("/:id", controllers.DeletarSolicitacao)
 		}

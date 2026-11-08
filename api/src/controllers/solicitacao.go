@@ -32,6 +32,40 @@ func BuscarSolicitacao(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"solicitacao": solicitacao})
 }
 
+func BuscarSolicitacoesPorUsuario(c *gin.Context) {
+	var tokenID = c.GetUint64("usuario_id")
+	if tokenID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
+		return
+	}
+
+	solicitacoes, err := repo_solicitacao.SolicitacaoRepo.BuscarPorUsuarioID(tokenID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar solicitações"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"solicitacoes": solicitacoes})
+}
+
+func BuscarSolicitacoesPorDoacao(c *gin.Context) {
+	paramID := c.Param("id")
+	doacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var solicitacoes []models.Solicitacao
+	solicitacoes, err = repo_solicitacao.SolicitacaoRepo.BuscarPorDoacaoID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar solicitações"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"solicitacoes": solicitacoes})
+}
+
 func CriarSolicitacao(c *gin.Context) {
 	var input solicitacaoInput
 
@@ -95,8 +129,5 @@ func DeletarSolicitacao(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"mensagem":       "Solicitação deletada com sucesso!",
-		"solicitacao_id": solicitacao.ID,
-	})
+	c.Status(http.StatusNoContent)
 }

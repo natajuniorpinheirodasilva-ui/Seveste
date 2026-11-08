@@ -149,8 +149,5 @@ func DeletarDoacao(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"mensagem":  "Doação deletada com sucesso!",
-		"doacao_id": doacao.ID,
-	})
+	c.Status(http.StatusNoContent)
 }
