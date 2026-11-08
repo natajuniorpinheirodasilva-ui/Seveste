@@ -6,7 +6,7 @@ import (
 )
 
 type Doacao struct {
-	ID        uint64 `json:"id"`
+	ID        uint64 `json:"id_doacao"`
 	Titulo    string `json:"titulo" binding:"required"`
 	Descricao string `json:"descricao" binding:"required"`
 	Categoria string `json:"categoria" binding:"required"`
@@ -77,7 +77,7 @@ func (d *Doacao) Mesclar(dados AtualizacaoDoacao) error {
 	}
 
 	if dados.Categoria != nil {
-		categoria := strings.TrimSpace(*dados.Descricao)
+		categoria := strings.TrimSpace(*dados.Categoria)
 		if categoria == "" {
 			return errors.New("o campo 'Categoria' não pode estar vazio")
 		}

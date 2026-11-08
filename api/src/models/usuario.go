@@ -13,7 +13,7 @@ const (
 )
 
 type Usuario struct {
-	ID       uint64 `json:"id"`
+	ID       uint64 `json:"id_usuario"`
 	Nome     string `json:"nome" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Senha    string `json:"senha,omitempty" binding:"required"`

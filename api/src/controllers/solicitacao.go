@@ -1,0 +1,133 @@
+package controllers
+
+import (
+	"net/http"
+	"seveste-api/src/models"
+	"seveste-api/src/repositories/repo_solicitacao"
+	"strconv"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+type solicitacaoInput struct {
+	DoacaoID uint64 `json:"id_doacao" binding:"required"`
+}
+
+func BuscarSolicitacao(c *gin.Context) {
+	paramID := c.Param("id")
+	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var solicitacao *models.Solicitacao
+	solicitacao, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"solicitacao": solicitacao})
+}
+
+func BuscarSolicitacoesPorUsuario(c *gin.Context) {
+	var tokenID = c.GetUint64("usuario_id")
+	if tokenID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
+		return
+	}
+
+	solicitacoes, err := repo_solicitacao.SolicitacaoRepo.BuscarPorUsuarioID(tokenID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar solicitações"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"solicitacoes": solicitacoes})
+}
+
+func BuscarSolicitacoesPorDoacao(c *gin.Context) {
+	paramID := c.Param("id")
+	doacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var solicitacoes []models.Solicitacao
+	solicitacoes, err = repo_solicitacao.SolicitacaoRepo.BuscarPorDoacaoID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar solicitações"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"solicitacoes": solicitacoes})
+}
+
+func CriarSolicitacao(c *gin.Context) {
+	var input solicitacaoInput
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var novo models.Solicitacao
+	novo.Status = "PENDENTE"
+	novo.CriadoEm = time.Now()
+	novo.DoacaoID = input.DoacaoID
+	novo.UsuarioID = c.GetUint64("usuario_id")
+
+	if _, err := repo_solicitacao.SolicitacaoRepo.BuscarPorID(novo.DoacaoID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "a doacao selecionada para essa solicitacao nao existe"})
+		return
+	}
+
+	if err := novo.Preparar(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	criada, err := repo_solicitacao.SolicitacaoRepo.Criar(&novo)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+	}
+
+	c.JSON(http.StatusCreated, criada)
+}
+
+func DeletarSolicitacao(c *gin.Context) {
+	paramID := c.Param("id")
+	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var solicitacao *models.Solicitacao
+	solicitacao, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if tokenID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
+		return
+	}
+
+	if solicitacao.UsuarioID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para deletar essa solicitação"})
+		return
+	}
+
+	if err = repo_solicitacao.SolicitacaoRepo.Deletar(solicitacaoID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
