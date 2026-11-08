@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f2efdf;
+  --foreground: #1e302b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-seveste-cream: #f2efdf;
+  --color-seveste-surface: #e5e0cb;
+  --color-seveste-green: #356b55;
+  --color-seveste-dark: #173f35;
+  --color-seveste-sage: #8b9994;
+  --color-seveste-text: #1e302b;
+  --color-seveste-muted: #68736f;
+  --color-seveste-accent: #bd9a68;
+  --color-seveste-white: #fffdf5;
+  --font-display: var(--font-cormorant);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-cormorant), Georgia, serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #bd9a68;
+  color: #173f35;
+}
