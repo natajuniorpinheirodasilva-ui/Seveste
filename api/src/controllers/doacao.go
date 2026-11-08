@@ -126,9 +126,21 @@ func DeletarDoacao(c *gin.Context) {
 		return
 	}
 
-	_, err = repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	var doacao *models.Doacao
+	doacao, err = repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if tokenID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
+		return
+	}
+
+	if doacao.UsuarioID != tokenID {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "você não tem permissão para fazer essa solicitação"})
 		return
 	}
 
@@ -137,5 +149,8 @@ func DeletarDoacao(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.JSON(http.StatusOK, gin.H{
+		"mensagem":  "Doação deletada com sucesso!",
+		"doacao_id": doacao.ID,
+	})
 }

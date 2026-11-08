@@ -79,26 +79,26 @@ var solicitacoes = []models.Solicitacao{
 	{
 		Status:    "PENDENTE",
 		CriadoEm:  time.Now(),
-		IDDoacao:  1,
-		IDUsuario: 2,
+		DoacaoID:  1,
+		UsuarioID: 2,
 	},
 	{
 		Status:    "ACEITA",
 		CriadoEm:  time.Now(),
-		IDDoacao:  1,
-		IDUsuario: 3,
+		DoacaoID:  1,
+		UsuarioID: 3,
 	},
 	{
 		Status:    "RECUSADA",
 		CriadoEm:  time.Now(),
-		IDDoacao:  1,
-		IDUsuario: 2,
+		DoacaoID:  1,
+		UsuarioID: 2,
 	},
 	{
 		Status:    "PENDENTE",
 		CriadoEm:  time.Now(),
-		IDDoacao:  2,
-		IDUsuario: 3,
+		DoacaoID:  2,
+		UsuarioID: 3,
 	},
 }
 

@@ -11,8 +11,8 @@ type Solicitacao struct {
 	ID        uint64    `json:"id_solicitacao"`
 	Status    string    `json:"status" binding:"required"`
 	CriadoEm  time.Time `json:"criado_em" binding:"required"`
-	IDDoacao  uint64    `json:"id_doacao" binding:"required"`
-	IDUsuario uint64    `json:"id_usuario" binding:"required"`
+	DoacaoID  uint64    `json:"id_doacao" binding:"required"`
+	UsuarioID uint64    `json:"id_usuario" binding:"required"`
 }
 
 func (s *Solicitacao) Preparar() error {
@@ -30,11 +30,11 @@ func (s *Solicitacao) formatar() {
 }
 
 func (s *Solicitacao) validar() error {
-	if s.IDDoacao == 0 {
+	if s.DoacaoID == 0 {
 		return errors.New("o id_doacao e obrigatorio e deve ser valido")
 	}
 
-	if s.IDUsuario == 0 {
+	if s.UsuarioID == 0 {
 		return errors.New("o id_usuario e obrigatorio e deve ser valido")
 	}
 

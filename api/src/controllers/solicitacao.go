@@ -11,7 +11,7 @@ import (
 )
 
 type solicitacaoInput struct {
-	IDDoacao uint64 `json:"id_doacao" binding:"required"`
+	DoacaoID uint64 `json:"id_doacao" binding:"required"`
 }
 
 func BuscarSolicitacao(c *gin.Context) {
@@ -43,10 +43,10 @@ func CriarSolicitacao(c *gin.Context) {
 	var novo models.Solicitacao
 	novo.Status = "PENDENTE"
 	novo.CriadoEm = time.Now()
-	novo.IDDoacao = input.IDDoacao
-	novo.IDUsuario = c.GetUint64("usuario_id")
+	novo.DoacaoID = input.DoacaoID
+	novo.UsuarioID = c.GetUint64("usuario_id")
 
-	if _, err := repo_solicitacao.SolicitacaoRepo.BuscarPorID(novo.IDDoacao); err != nil {
+	if _, err := repo_solicitacao.SolicitacaoRepo.BuscarPorID(novo.DoacaoID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "a doacao selecionada para essa solicitacao nao existe"})
 		return
 	}
@@ -65,7 +65,6 @@ func CriarSolicitacao(c *gin.Context) {
 }
 
 func DeletarSolicitacao(c *gin.Context) {
-	// TODO: verificar se o usuário que mandou a requisição é o dono da solicitação
 	paramID := c.Param("id")
 	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
 	if err != nil {
@@ -73,9 +72,21 @@ func DeletarSolicitacao(c *gin.Context) {
 		return
 	}
 
-	_, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
+	var solicitacao *models.Solicitacao
+	solicitacao, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if tokenID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
+		return
+	}
+
+	if solicitacao.UsuarioID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para deletar essa solicitação"})
 		return
 	}
 
@@ -84,5 +95,8 @@ func DeletarSolicitacao(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.JSON(http.StatusOK, gin.H{
+		"mensagem":       "Solicitação deletada com sucesso!",
+		"solicitacao_id": solicitacao.ID,
+	})
 }

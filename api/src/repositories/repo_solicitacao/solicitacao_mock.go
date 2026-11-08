@@ -42,13 +42,13 @@ func (r *RepositorioDeMemoriaSolicitacao) BuscarPorID(solicitacaoID uint64) (*mo
 	return &s, nil
 }
 
-func (r *RepositorioDeMemoriaSolicitacao) BuscarPorIDDoacao(doacaoID uint64) ([]models.Solicitacao, error) {
+func (r *RepositorioDeMemoriaSolicitacao) BuscarPorDoacaoID(doacaoID uint64) ([]models.Solicitacao, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	var filtrados []models.Solicitacao
 	for _, s := range r.solicitacoes {
-		if s.IDDoacao == doacaoID {
+		if s.DoacaoID == doacaoID {
 			filtrados = append(filtrados, s)
 		}
 	}
@@ -56,13 +56,13 @@ func (r *RepositorioDeMemoriaSolicitacao) BuscarPorIDDoacao(doacaoID uint64) ([]
 	return filtrados, nil
 }
 
-func (r *RepositorioDeMemoriaSolicitacao) BuscarPorIDUsuario(usuarioID uint64) ([]models.Solicitacao, error) {
+func (r *RepositorioDeMemoriaSolicitacao) BuscarPorUsuarioID(usuarioID uint64) ([]models.Solicitacao, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	var filtrados []models.Solicitacao
 	for _, s := range r.solicitacoes {
-		if s.IDUsuario == usuarioID {
+		if s.UsuarioID == usuarioID {
 			filtrados = append(filtrados, s)
 		}
 	}
