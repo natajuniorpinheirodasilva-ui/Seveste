@@ -64,10 +64,9 @@ func registrarRotasDeDoacao(rg *gin.RouterGroup) {
 func registrarRotasDeSolicitacao(rg *gin.RouterGroup) {
 	solicitacoes := rg.Group("/solicitacoes")
 	{
-		solicitacoes.GET("/:id", controllers.BuscarSolicitacao)
-
 		solicitacoes.Use(middlewares.Autenticar())
 		{
+			solicitacoes.GET("/:id", controllers.BuscarSolicitacao)
 			solicitacoes.GET("/minhas", controllers.BuscarSolicitacoesPorUsuario)
 			solicitacoes.POST("/", controllers.CriarSolicitacao)
 			solicitacoes.DELETE("/:id", controllers.DeletarSolicitacao)
