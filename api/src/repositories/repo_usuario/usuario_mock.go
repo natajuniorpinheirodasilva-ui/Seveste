@@ -2,6 +2,7 @@ package repo_usuario
 
 import (
 	"errors"
+	"strings"
 	"seveste-api/src/models"
 	"sync"
 )
@@ -22,6 +23,12 @@ func NovoRepositorioDeUsuario() *RepositorioDeMemoriaUsuario {
 func (r *RepositorioDeMemoriaUsuario) Criar(u *models.Usuario) (*models.Usuario, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	for _, existente := range r.usuarios {
+		if strings.EqualFold(existente.Email, u.Email) {
+			return nil, ErrEmailEmUso
+		}
+	}
 
 	u.ID = r.proxID
 	r.usuarios[u.ID] = *u
@@ -73,7 +80,7 @@ func (r *RepositorioDeMemoriaUsuario) BuscarPorEmail(email string) (*models.Usua
 	defer r.mu.RUnlock()
 
 	for _, u := range r.usuarios {
-		if u.Email == email {
+		if strings.EqualFold(u.Email, strings.TrimSpace(email)) {
 			return &u, nil
 		}
 	}

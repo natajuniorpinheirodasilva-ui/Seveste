@@ -3,12 +3,26 @@ package seguranca
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var secretkey = []byte("Chave super secreta")
+const DuracaoToken = 6 * time.Hour
+
+// a chave deve ser definida pela variável de ambiente JWT_SECRET fora do ambiente de desenvolvimento
+var secretkey = carregarChave()
+
+func carregarChave() []byte {
+	if chave := os.Getenv("JWT_SECRET"); chave != "" {
+		return []byte(chave)
+	}
+
+	log.Println("aviso: JWT_SECRET nao definido, usando chave de desenvolvimento")
+	return []byte("Chave super secreta")
+}
 
 // dados embutidos dentro do token
 type customClaims struct {
@@ -23,7 +37,7 @@ func GerarToken(usuarioID uint64, tipo string) (string, error) {
 		UsuarioID: usuarioID,
 		Tipo:      tipo,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(6 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(DuracaoToken)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    "seveste-api",

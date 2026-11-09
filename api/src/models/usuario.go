@@ -5,6 +5,7 @@ import (
 	"seveste-api/src/seguranca"
 	"slices"
 	"strings"
+	"time"
 )
 
 const (
@@ -16,23 +17,47 @@ type Usuario struct {
 	ID       uint64 `json:"id_usuario"`
 	Nome     string `json:"nome" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
-	Senha    string `json:"senha,omitempty" binding:"required"`
+	Senha    string `json:"-"`
 	Telefone string `json:"telefone"`
 	UF       string `json:"uf" binding:"required"`
 	Cidade   string `json:"cidade" binding:"required"`
 	Tipo     string `json:"tipo" binding:"required"`
+	Bio      string `json:"bio"`
 
 	RoupasProcuradas []string `json:"roupas_procuradas"`
 	TamanhoRoupa     string   `json:"tamanho_roupa"`
 	TamanhoCalcado   uint8    `json:"tamanho_calcado"`
+
+	// LGPD: registro de quando e em qual versão da política o consentimento foi dado
+	ConsentimentoEm time.Time `json:"consentimento_em"`
+	VersaoPolitica  string    `json:"versao_politica"`
+	CriadoEm        time.Time `json:"criado_em"`
+}
+
+// UsuarioPublico contém apenas os dados que podem ser exibidos para outras pessoas.
+// E-mail, telefone e dados de tamanho nunca são expostos publicamente (minimização de dados - LGPD).
+type UsuarioPublico struct {
+	ID       uint64    `json:"id_usuario"`
+	Nome     string    `json:"nome"`
+	UF       string    `json:"uf"`
+	Cidade   string    `json:"cidade"`
+	Tipo     string    `json:"tipo"`
+	Bio      string    `json:"bio"`
+	CriadoEm time.Time `json:"criado_em"`
 }
 
 type AtualizacaoUsuario struct {
-	Nome     *string `json:"nome"`
-	Telefone *string `json:"telefone"`
-	UF       *string `json:"uf"`
-	Cidade   *string `json:"cidade"`
+	Nome             *string   `json:"nome"`
+	Telefone         *string   `json:"telefone"`
+	UF               *string   `json:"uf"`
+	Cidade           *string   `json:"cidade"`
+	Bio              *string   `json:"bio"`
+	RoupasProcuradas *[]string `json:"roupas_procuradas"`
+	TamanhoRoupa     *string   `json:"tamanho_roupa"`
+	TamanhoCalcado   *uint8    `json:"tamanho_calcado"`
 }
+
+const tamanhoMaximoBio = 500
 
 // formata os campos e valida se eles estão corretos
 func (u *Usuario) Preparar(etapa string) error {
@@ -47,20 +72,34 @@ func (u *Usuario) Preparar(etapa string) error {
 	return nil
 }
 
+func (u *Usuario) Publico() UsuarioPublico {
+	return UsuarioPublico{
+		ID:       u.ID,
+		Nome:     u.Nome,
+		UF:       u.UF,
+		Cidade:   u.Cidade,
+		Tipo:     u.Tipo,
+		Bio:      u.Bio,
+		CriadoEm: u.CriadoEm,
+	}
+}
+
 // Tira todos os espaços em volta dos campos, necessário porque mesmo com a binding required, ele ainda
 // considera " " como preenchido
 func (u *Usuario) formatar(etapa string) error {
 	u.Nome = strings.TrimSpace(u.Nome)
-	u.Email = strings.TrimSpace(u.Email)
+	u.Email = strings.ToLower(strings.TrimSpace(u.Email))
 	u.Senha = strings.TrimSpace(u.Senha)
 	u.Telefone = strings.TrimSpace(u.Telefone)
-	u.UF = strings.TrimSpace(u.UF)
+	u.UF = strings.ToUpper(strings.TrimSpace(u.UF))
 	u.Cidade = strings.TrimSpace(u.Cidade)
 	u.Tipo = strings.TrimSpace(u.Tipo)
 	u.Tipo = strings.ToLower(u.Tipo)
+	u.Bio = strings.TrimSpace(u.Bio)
+	u.TamanhoRoupa = strings.ToUpper(strings.TrimSpace(u.TamanhoRoupa))
 
 	for index, s := range u.RoupasProcuradas {
-		s = strings.TrimSpace(s)
+		s = strings.ToLower(strings.TrimSpace(s))
 		u.RoupasProcuradas[index] = s
 	}
 
@@ -90,6 +129,10 @@ func (u *Usuario) validar(etapa string) error {
 		return errors.New("a senha e obrigatoria e deve ser preenchida")
 	}
 
+	if len(u.Bio) > tamanhoMaximoBio {
+		return errors.New("a bio deve ter no maximo 500 caracteres")
+	}
+
 	if u.Tipo != TipoDoador && u.Tipo != TipoAcolhido {
 		return errors.New("tipo de usuario invalido. por favor selecione um tipo valido")
 	}
@@ -110,6 +153,11 @@ func (u *Usuario) validar(etapa string) error {
 		}
 
 		u.RoupasProcuradas = roupasSemVazias
+	} else {
+		// doadores não precisam informar dados de tamanho (minimização de dados)
+		u.RoupasProcuradas = nil
+		u.TamanhoRoupa = ""
+		u.TamanhoCalcado = 0
 	}
 
 	return nil
@@ -149,6 +197,48 @@ func (u *Usuario) Mesclar(dados AtualizacaoUsuario) error {
 		}
 		u.Cidade = cidade
 		alteracaoFeita = true
+	}
+
+	if dados.Bio != nil {
+		bio := strings.TrimSpace(*dados.Bio)
+		if len(bio) > tamanhoMaximoBio {
+			return errors.New("a bio deve ter no maximo 500 caracteres")
+		}
+		u.Bio = bio
+		alteracaoFeita = true
+	}
+
+	if u.Tipo == TipoAcolhido {
+		if dados.RoupasProcuradas != nil {
+			roupas := []string{}
+			for _, r := range *dados.RoupasProcuradas {
+				if r = strings.ToLower(strings.TrimSpace(r)); r != "" {
+					roupas = append(roupas, r)
+				}
+			}
+			if len(roupas) == 0 {
+				return errors.New("pelo menos uma roupa deve ser selecionada")
+			}
+			u.RoupasProcuradas = roupas
+			alteracaoFeita = true
+		}
+
+		if dados.TamanhoRoupa != nil {
+			tamanho := strings.ToUpper(strings.TrimSpace(*dados.TamanhoRoupa))
+			if tamanho == "" {
+				return errors.New("o tamanho da roupa nao pode estar vazio")
+			}
+			u.TamanhoRoupa = tamanho
+			alteracaoFeita = true
+		}
+
+		if dados.TamanhoCalcado != nil {
+			if *dados.TamanhoCalcado == 0 {
+				return errors.New("o tamanho do calcado deve ser valido")
+			}
+			u.TamanhoCalcado = *dados.TamanhoCalcado
+			alteracaoFeita = true
+		}
 	}
 
 	if !alteracaoFeita {

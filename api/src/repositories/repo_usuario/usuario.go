@@ -1,8 +1,11 @@
 package repo_usuario
 
 import (
+	"errors"
 	"seveste-api/src/models"
 )
+
+var ErrEmailEmUso = errors.New("este e-mail ja esta cadastrado")
 
 type UsuarioRepositorio interface {
 	Criar(usuario *models.Usuario) (*models.Usuario, error)

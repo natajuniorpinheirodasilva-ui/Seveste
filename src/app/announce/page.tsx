@@ -1,14 +1,189 @@
+"use client"
+
+import { use, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import Navbar from "@/components/Navbar"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useRequireAuth } from "@/components/AuthProvider"
+import DonationPhoto from "@/components/DonationPhoto"
+import { ErrorMessage, Loading } from "@/components/Feedback"
+import { api, mensagemDeErro } from "@/lib/api"
+import {
+    CATEGORIAS,
+    CONDICOES,
+    MAXIMO_FOTOS,
+    TAMANHOS_LETRA,
+    TAMANHOS_NUMERICOS,
+    TAMANHO_MAXIMO_FOTO,
+} from "@/lib/constants"
+import type { Doacao } from "@/lib/types"
 import {
     UploadCloud,
     ImagePlus,
     Info,
     MapPin,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    X
 } from "lucide-react"
 
-export default function AnnounceDonation() {
+type Campos = {
+    titulo: string
+    categoria: string
+    tamanho: string
+    estado: string
+    descricao: string
+    cor: string
+    material: string
+    local: string
+}
+
+const CAMPOS_VAZIOS: Campos = { titulo: "", categoria: "", tamanho: "", estado: "", descricao: "", cor: "", material: "", local: "" }
+
+type FotoNova = { arquivo: File; preview: string }
+
+const inputClass = "w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base outline-none transition-colors duration-200 hover:border-seveste-green focus:border-seveste-green focus:ring-1 focus:ring-seveste-green"
+const labelClass = "mb-1.5 block text-sm font-medium text-seveste-dark"
+
+export default function AnnounceDonation({
+    searchParams,
+}: {
+    searchParams: Promise<{ editar?: string | string[] }>
+}) {
+    const { editar } = use(searchParams)
+    const idEdicao = typeof editar === "string" && /^\d+$/.test(editar) ? editar : null
+
+    const { usuario, carregando } = useRequireAuth("doador")
+    const router = useRouter()
+
+    const [campos, setCampos] = useState<Campos>(CAMPOS_VAZIOS)
+    const [fotosExistentes, setFotosExistentes] = useState<string[]>([])
+    const [fotosRemovidas, setFotosRemovidas] = useState<string[]>([])
+    const [fotosNovas, setFotosNovas] = useState<FotoNova[]>([])
+    const [carregandoDoacao, setCarregandoDoacao] = useState(!!idEdicao)
+    const [enviando, setEnviando] = useState(false)
+    const [erro, setErro] = useState<string | null>(null)
+
+    // no modo de edição, carrega os dados atuais do anúncio
+    useEffect(() => {
+        if (!idEdicao || !usuario) return
+
+        api<{ doacao: Doacao }>(`/doacoes/${idEdicao}`)
+            .then(({ doacao }) => {
+                if (doacao.usuario_id !== usuario.id_usuario) {
+                    router.replace("/dashboard")
+                    return
+                }
+                setCampos({
+                    titulo: doacao.titulo,
+                    categoria: doacao.categoria,
+                    tamanho: doacao.tamanho,
+                    estado: doacao.estado,
+                    descricao: doacao.descricao,
+                    cor: doacao.cor,
+                    material: doacao.material,
+                    local: doacao.local,
+                })
+                setFotosExistentes(doacao.fotos)
+            })
+            .catch((e) => setErro(mensagemDeErro(e)))
+            .finally(() => setCarregandoDoacao(false))
+    }, [idEdicao, usuario, router])
+
+    // libera as URLs temporárias das pré-visualizações ao sair da página
+    const previews = useRef<string[]>([])
+    useEffect(() => {
+        const urls = previews.current
+        return () => urls.forEach((url) => URL.revokeObjectURL(url))
+    }, [])
+
+    const atualizar = (campo: keyof Campos) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        setCampos({ ...campos, [campo]: event.target.value })
+    }
+
+    const fotosVisiveis = fotosExistentes.filter((foto) => !fotosRemovidas.includes(foto))
+    const vagas = MAXIMO_FOTOS - fotosVisiveis.length - fotosNovas.length
+
+    const handleSelecionarFotos = (event: ChangeEvent<HTMLInputElement>) => {
+        const arquivos = Array.from(event.target.files ?? [])
+        event.target.value = ""
+        setErro(null)
+
+        const validos = arquivos.filter((arquivo) => {
+            if (!["image/jpeg", "image/png", "image/webp"].includes(arquivo.type)) {
+                setErro(`"${arquivo.name}" não é uma imagem JPG, PNG ou WEBP.`)
+                return false
+            }
+            if (arquivo.size > TAMANHO_MAXIMO_FOTO) {
+                setErro(`"${arquivo.name}" é maior que 5MB.`)
+                return false
+            }
+            return true
+        })
+
+        if (validos.length > vagas) {
+            setErro(`Você pode adicionar no máximo ${MAXIMO_FOTOS} fotos por anúncio.`)
+        }
+
+        const adicionadas = validos.slice(0, Math.max(vagas, 0)).map((arquivo) => ({ arquivo, preview: URL.createObjectURL(arquivo) }))
+        previews.current.push(...adicionadas.map(({ preview }) => preview))
+        setFotosNovas([...fotosNovas, ...adicionadas])
+    }
+
+    const removerFotoNova = (index: number) => {
+        URL.revokeObjectURL(fotosNovas[index].preview)
+        setFotosNovas(fotosNovas.filter((_, i) => i !== index))
+    }
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+
+        if (!campos.estado) {
+            setErro("Selecione a condição da peça.")
+            return
+        }
+
+        setEnviando(true)
+        setErro(null)
+
+        try {
+            let id = idEdicao
+            if (id) {
+                await api(`/doacoes/${id}`, { method: "PATCH", body: campos })
+                for (const foto of fotosRemovidas) {
+                    await api(`/doacoes/${id}/fotos/${encodeURIComponent(foto)}`, { method: "DELETE" })
+                }
+            } else {
+                const { criado } = await api<{ criado: Doacao }>("/doacoes", { method: "POST", body: campos })
+                id = String(criado.id_doacao)
+            }
+
+            if (fotosNovas.length > 0) {
+                const formulario = new FormData()
+                fotosNovas.forEach(({ arquivo }) => formulario.append("fotos", arquivo))
+                await api(`/doacoes/${id}/fotos`, { method: "POST", body: formulario })
+            }
+
+            router.push(`/products/${id}`)
+        } catch (e) {
+            setErro(mensagemDeErro(e))
+            setEnviando(false)
+        }
+    }
+
+    if (carregando || carregandoDoacao) {
+        return (
+            <div className="min-h-screen bg-slate-50 text-seveste-text">
+                <header>
+                    <Navbar />
+                </header>
+                <main className="mx-auto max-w-6xl px-6 py-12 md:px-12">
+                    <Loading />
+                </main>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 text-seveste-text">
             <header>
@@ -17,7 +192,7 @@ export default function AnnounceDonation() {
 
             <main className="mx-auto max-w-6xl px-6 py-12 md:px-12 lg:py-16">
                 <div className="mb-10">
-                    <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Anunciar doação</h1>
+                    <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{idEdicao ? "Editar doação" : "Anunciar doação"}</h1>
                     <p className="mt-2 text-seveste-muted">
                         Preencha os detalhes abaixo para que sua peça encontre quem precisa.
                     </p>
@@ -26,7 +201,7 @@ export default function AnnounceDonation() {
                 <div className="flex flex-col gap-10 lg:flex-row lg:items-start">
 
                     {/* Formulário Principal */}
-                    <form className="flex-1 space-y-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+                    <form onSubmit={handleSubmit} className="flex-1 space-y-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
 
                         {/* Seção de Fotos */}
                         <section>
@@ -34,14 +209,56 @@ export default function AnnounceDonation() {
                                 <ImagePlus className="h-5 w-5 text-seveste-green" />
                                 Fotos da peça
                             </h2>
-                            <div className="group relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-slate-50 py-12 transition-all duration-300 hover:border-seveste-green hover:bg-seveste-green/5">
-                                <div className="mb-4 rounded-full bg-white p-4 shadow-sm transition-transform duration-300 group-hover:-translate-y-1 group-hover:shadow-md">
-                                    <UploadCloud className="h-8 w-8 text-seveste-muted group-hover:text-seveste-green" />
+
+                            {(fotosVisiveis.length > 0 || fotosNovas.length > 0) && (
+                                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    {fotosVisiveis.map((foto) => (
+                                        <div key={foto} className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-slate-100">
+                                            <DonationPhoto foto={foto} alt="Foto do anúncio" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setFotosRemovidas([...fotosRemovidas, foto])}
+                                                className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-red-600 shadow-sm hover:bg-white"
+                                                aria-label="Remover foto"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {fotosNovas.map(({ preview }, index) => (
+                                        <div key={preview} className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
+                                            {/* eslint-disable-next-line @next/next/no-img-element -- pré-visualização local (blob:) */}
+                                            <img src={preview} alt="Nova foto" className="h-full w-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => removerFotoNova(index)}
+                                                className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-red-600 shadow-sm hover:bg-white"
+                                                aria-label="Remover foto"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
-                                <p className="font-medium text-seveste-dark">Clique ou arraste as fotos aqui</p>
-                                <p className="mt-1 text-sm text-seveste-muted">PNG, JPG de até 5MB. Máximo de 4 fotos.</p>
-                                <input type="file" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" multiple accept="image/*" />
-                            </div>
+                            )}
+
+                            {vagas > 0 && (
+                                <div className="group relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-slate-50 py-12 transition-all duration-300 hover:border-seveste-green hover:bg-seveste-green/5">
+                                    <div className="mb-4 rounded-full bg-white p-4 shadow-sm transition-transform duration-300 group-hover:-translate-y-1 group-hover:shadow-md">
+                                        <UploadCloud className="h-8 w-8 text-seveste-muted group-hover:text-seveste-green" />
+                                    </div>
+                                    <p className="font-medium text-seveste-dark">Clique ou arraste as fotos aqui</p>
+                                    <p className="mt-1 text-sm text-seveste-muted">PNG, JPG ou WEBP de até 5MB. Máximo de 4 fotos.</p>
+                                    <input
+                                        type="file"
+                                        onChange={handleSelecionarFotos}
+                                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                        multiple
+                                        accept="image/jpeg,image/png,image/webp"
+                                        aria-label="Selecionar fotos"
+                                    />
+                                </div>
+                            )}
                         </section>
 
                         <hr className="border-gray-100" />
@@ -52,65 +269,81 @@ export default function AnnounceDonation() {
 
                             <div className="space-y-5">
                                 <div>
-                                    <label htmlFor="title" className="mb-1.5 block text-sm font-medium text-seveste-dark">Título do anúncio</label>
+                                    <label htmlFor="title" className={labelClass}>Título do anúncio *</label>
                                     <input
                                         type="text"
                                         id="title"
+                                        value={campos.titulo}
+                                        onChange={atualizar("titulo")}
                                         placeholder="Ex: Casaco de lã azul marinho"
-                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base outline-none transition-colors duration-200 hover:border-seveste-green focus:border-seveste-green focus:ring-1 focus:ring-seveste-green"
+                                        maxLength={80}
+                                        required
+                                        className={inputClass}
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                                     <div>
-                                        <label htmlFor="category" className="mb-1.5 block text-sm font-medium text-seveste-dark">Categoria</label>
-                                        <select
-                                            id="category"
-                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base outline-none transition-colors duration-200 hover:border-seveste-green focus:border-seveste-green focus:ring-1 focus:ring-seveste-green cursor-pointer"
-                                        >
+                                        <label htmlFor="category" className={labelClass}>Categoria *</label>
+                                        <select id="category" value={campos.categoria} onChange={atualizar("categoria")} required className={`${inputClass} cursor-pointer`}>
                                             <option value="">Selecione...</option>
-                                            <option value="roupas">Roupas</option>
-                                            <option value="agasalhos">Agasalhos</option>
-                                            <option value="calcados">Calçados</option>
-                                            <option value="acessorios">Acessórios</option>
-                                            <option value="infantil">Infantil</option>
+                                            {CATEGORIAS.map(({ valor, rotulo }) => <option key={valor} value={valor}>{rotulo}</option>)}
                                         </select>
                                     </div>
 
                                     <div>
-                                        <label htmlFor="size" className="mb-1.5 block text-sm font-medium text-seveste-dark">Tamanho</label>
-                                        <select
-                                            id="size"
-                                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base outline-none transition-colors duration-200 hover:border-seveste-green focus:border-seveste-green focus:ring-1 focus:ring-seveste-green cursor-pointer"
-                                        >
+                                        <label htmlFor="size" className={labelClass}>Tamanho *</label>
+                                        <select id="size" value={campos.tamanho} onChange={atualizar("tamanho")} required className={`${inputClass} cursor-pointer`}>
                                             <option value="">Selecione...</option>
-                                            <option value="pp">PP</option>
-                                            <option value="p">P</option>
-                                            <option value="m">M</option>
-                                            <option value="g">G</option>
-                                            <option value="gg">GG</option>
-                                            <option value="unico">Tamanho Único</option>
+                                            <optgroup label="Roupas">
+                                                {TAMANHOS_LETRA.map(({ valor, rotulo }) => <option key={valor} value={valor}>{rotulo === "Único" ? "Tamanho Único" : rotulo}</option>)}
+                                            </optgroup>
+                                            <optgroup label="Numeração (calçados e infantil)">
+                                                {TAMANHOS_NUMERICOS.map((numero) => <option key={numero} value={numero}>{numero}</option>)}
+                                            </optgroup>
                                         </select>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label htmlFor="condition" className="mb-1.5 block text-sm font-medium text-seveste-dark">Condição da peça</label>
+                                    <span className={labelClass}>Condição da peça *</span>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                        {['Novo (com etiqueta)', 'Usado (excelente)', 'Usado (com marcas)'].map((cond) => (
-                                            <label key={cond} className="group flex cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white p-3 text-sm text-seveste-muted transition-all duration-200 hover:border-seveste-green hover:bg-seveste-green/5 hover:text-seveste-dark has-checked:border-seveste-green has-checked:bg-seveste-green/10 has-checked:text-seveste-dark has-checked:font-semibold">
-                                                <input type="radio" name="condition" value={cond} className="sr-only" />
-                                                {cond}
+                                        {CONDICOES.map(({ valor, rotulo }) => (
+                                            <label key={valor} className="group flex cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white p-3 text-sm text-seveste-muted transition-all duration-200 hover:border-seveste-green hover:bg-seveste-green/5 hover:text-seveste-dark has-checked:border-seveste-green has-checked:bg-seveste-green/10 has-checked:text-seveste-dark has-checked:font-semibold has-focus-visible:ring-2 has-focus-visible:ring-seveste-green">
+                                                <input
+                                                    type="radio"
+                                                    name="condition"
+                                                    value={valor}
+                                                    checked={campos.estado === valor}
+                                                    onChange={atualizar("estado")}
+                                                    className="sr-only"
+                                                />
+                                                {rotulo}
                                             </label>
                                         ))}
                                     </div>
                                 </div>
 
+                                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                                    <div>
+                                        <label htmlFor="color" className={labelClass}>Cor</label>
+                                        <input type="text" id="color" value={campos.cor} onChange={atualizar("cor")} placeholder="Ex: Azul marinho" maxLength={40} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="material" className={labelClass}>Material</label>
+                                        <input type="text" id="material" value={campos.material} onChange={atualizar("material")} placeholder="Ex: Lã, algodão..." maxLength={40} className={inputClass} />
+                                    </div>
+                                </div>
+
                                 <div>
-                                    <label htmlFor="description" className="mb-1.5 block text-sm font-medium text-seveste-dark">Descrição</label>
+                                    <label htmlFor="description" className={labelClass}>Descrição *</label>
                                     <textarea
                                         id="description"
                                         rows={4}
+                                        value={campos.descricao}
+                                        onChange={atualizar("descricao")}
+                                        maxLength={1000}
+                                        required
                                         placeholder="Conte um pouco sobre a peça, detalhes de tecido, modelagem ou motivo da doação..."
                                         className="w-full resize-none rounded-lg border border-gray-300 bg-white px-4 py-3 text-base outline-none transition-colors duration-200 hover:border-seveste-green focus:border-seveste-green focus:ring-1 focus:ring-seveste-green"
                                     />
@@ -127,27 +360,43 @@ export default function AnnounceDonation() {
                                 Local de retirada
                             </h2>
                             <div>
-                                <label htmlFor="location" className="mb-1.5 block text-sm font-medium text-seveste-dark">Bairro ou região aproximada</label>
+                                <label htmlFor="location" className={labelClass}>Bairro ou região aproximada</label>
                                 <input
                                     type="text"
                                     id="location"
+                                    value={campos.local}
+                                    onChange={atualizar("local")}
+                                    maxLength={80}
                                     placeholder="Ex: Centro, Próximo ao metrô..."
-                                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base outline-none transition-colors duration-200 hover:border-seveste-green focus:border-seveste-green focus:ring-1 focus:ring-seveste-green"
+                                    className={inputClass}
                                 />
                                 <p className="mt-2 flex items-center gap-1.5 text-xs text-seveste-muted">
                                     <AlertCircle className="h-3.5 w-3.5" />
                                     Por segurança, não informe seu endereço completo aqui. Combine no chat.
                                 </p>
+                                {usuario && (
+                                    <p className="mt-1 text-xs text-seveste-muted">
+                                        A cidade exibida no anúncio será a do seu cadastro: <strong>{usuario.cidade} - {usuario.uf}</strong>.
+                                    </p>
+                                )}
                             </div>
                         </section>
 
-                        <div className="pt-4">
+                        {erro && <ErrorMessage mensagem={erro} />}
+
+                        <div className="flex flex-col gap-3 pt-4">
                             <button
                                 type="submit"
-                                className="w-full rounded-lg border border-seveste-dark bg-seveste-dark px-6 py-4 font-sans text-base font-semibold tracking-wide text-seveste-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-seveste-green hover:bg-seveste-green hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seveste-green"
+                                disabled={enviando}
+                                className="w-full rounded-lg border border-seveste-dark bg-seveste-dark px-6 py-4 font-sans text-base font-semibold tracking-wide text-seveste-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-seveste-green hover:bg-seveste-green hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seveste-green disabled:cursor-wait disabled:opacity-60"
                             >
-                                Publicar doação
+                                {enviando ? "Salvando..." : idEdicao ? "Salvar alterações" : "Publicar doação"}
                             </button>
+                            {idEdicao && (
+                                <Link href="/dashboard" className="text-center text-sm font-medium text-seveste-muted hover:text-seveste-dark">
+                                    Cancelar
+                                </Link>
+                            )}
                         </div>
                     </form>
 
@@ -170,6 +419,10 @@ export default function AnnounceDonation() {
                                 <li className="flex items-start gap-2">
                                     <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-seveste-green" />
                                     <span>Lave a peça antes de entregar. Empatia faz parte da doação.</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                    <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-seveste-green" />
+                                    <span>Evite fotos que mostrem rostos, documentos ou a fachada da sua casa.</span>
                                 </li>
                             </ul>
                         </div>

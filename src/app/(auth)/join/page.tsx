@@ -1,10 +1,12 @@
 "use client"
 
+import { useAuth } from "@/components/AuthProvider"
 import DonorForm from "@/components/DonorForm"
 import RecipientForm from "@/components/RecipientForm"
 import { HeartHandshake, Search, Shirt } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { use, useState } from "react"
+import { use, useEffect, useState } from "react"
 
 export default function JoinPage({
     searchParams,
@@ -15,6 +17,14 @@ export default function JoinPage({
     const initialRole = role === "donor" || role === "recipient" ? role : null
     const [selectedRole, setSelectedRole] = useState<"donor" | "recipient" | null>(initialRole)
     const router = useRouter()
+    const { usuario } = useAuth()
+
+    // quem já está logado vai direto para a área principal do seu perfil
+    useEffect(() => {
+        if (usuario) {
+            router.replace(usuario.tipo === "doador" ? "/announce" : "/products")
+        }
+    }, [usuario, router])
 
     if (selectedRole === "donor") {
         return (
@@ -108,6 +118,13 @@ export default function JoinPage({
                         </button>
                     ))}
                 </div>
+
+                <p className="mt-10 text-center text-sm text-seveste-muted">
+                    Já tem uma conta?{" "}
+                    <Link href="/login" className="font-semibold text-seveste-green underline-offset-4 hover:text-seveste-dark hover:underline">
+                        Entrar
+                    </Link>
+                </p>
             </section>
         </main>
     )

@@ -7,15 +7,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// As rotas são registradas sem barra final (ex.: "/api/v1/doacoes") para evitar redirecionamentos,
+// já que o front-end acessa a API através do proxy do Next.js (/api/* -> esta API).
 func Configurar() *gin.Engine {
 	router := gin.Default()
+	router.MaxMultipartMemory = 8 << 20
 
 	v1 := router.Group("/api/v1")
 	{
+		v1.GET("/saude", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+
+		// fotos das doações
+		v1.Static("/uploads", controllers.PastaUploads)
+
 		registrarRotasDeUsuario(v1)
 		registrarRotasDeLogin(v1)
 		registrarRotasDeDoacao(v1)
 		registrarRotasDeSolicitacao(v1)
+		registrarRotasDeAvaliacao(v1)
+		registrarRotasDeFavorito(v1)
 	}
 
 	return router
@@ -24,52 +34,80 @@ func Configurar() *gin.Engine {
 func registrarRotasDeUsuario(rg *gin.RouterGroup) {
 	usuarios := rg.Group("/usuarios")
 	{
-		usuarios.GET("/", controllers.GetUsuarios)
+		usuarios.GET("", controllers.GetUsuarios)
+		usuarios.POST("", controllers.CriarUsuario)
 		usuarios.GET("/:id", controllers.GetUsuario)
-		usuarios.POST("/", controllers.CriarUsuario)
-		usuarios.Use(middlewares.Autenticar())
+		usuarios.GET("/:id/avaliacoes", controllers.BuscarAvaliacoesDoUsuario)
+
+		autenticado := usuarios.Group("", middlewares.Autenticar())
 		{
-			usuarios.Use(middlewares.Autorizacao())
+			autenticado.GET("/me", controllers.BuscarUsuarioLogado)
+			autenticado.GET("/me/dados", controllers.ExportarDados)
+
+			dono := autenticado.Group("", middlewares.Autorizacao())
 			{
-				usuarios.PATCH("/:id", controllers.AtualizarUsuario)
-				usuarios.DELETE("/:id", controllers.DeletarUsuario)
+				dono.PATCH("/:id", controllers.AtualizarUsuario)
+				dono.DELETE("/:id", controllers.DeletarUsuario)
 			}
 		}
 	}
 }
 
 func registrarRotasDeLogin(rg *gin.RouterGroup) {
-	login := rg.Group("/login")
-	{
-		login.POST("/", controllers.Login)
-	}
+	rg.POST("/login", controllers.Login)
+	rg.POST("/logout", controllers.Logout)
 }
 
 func registrarRotasDeDoacao(rg *gin.RouterGroup) {
 	doacoes := rg.Group("/doacoes")
 	{
-		doacoes.GET("/", controllers.BuscarDoacoes)
-		doacoes.GET("/:id", controllers.BuscarDoacao)
-		doacoes.Use(middlewares.Autenticar())
+		publico := doacoes.Group("", middlewares.AutenticarOpcional())
 		{
-			doacoes.GET("/:id/solicitacoes", controllers.BuscarSolicitacoesPorDoacao)
+			publico.GET("", controllers.BuscarDoacoes)
+			publico.GET("/:id", controllers.BuscarDoacao)
+		}
 
-			doacoes.POST("/", controllers.CriarDoacao)
-			doacoes.PATCH("/:id", controllers.AtualizarDoacao)
-			doacoes.DELETE("/:id", controllers.DeletarDoacao)
+		autenticado := doacoes.Group("", middlewares.Autenticar())
+		{
+			autenticado.GET("/:id/solicitacoes", controllers.BuscarSolicitacoesPorDoacao)
+
+			autenticado.POST("", controllers.CriarDoacao)
+			autenticado.PATCH("/:id", controllers.AtualizarDoacao)
+			autenticado.DELETE("/:id", controllers.DeletarDoacao)
+
+			autenticado.POST("/:id/fotos", controllers.AdicionarFotos)
+			autenticado.DELETE("/:id/fotos/:nome", controllers.RemoverFoto)
 		}
 	}
 }
 
 func registrarRotasDeSolicitacao(rg *gin.RouterGroup) {
-	solicitacoes := rg.Group("/solicitacoes")
+	solicitacoes := rg.Group("/solicitacoes", middlewares.Autenticar())
 	{
-		solicitacoes.Use(middlewares.Autenticar())
-		{
-			solicitacoes.GET("/:id", controllers.BuscarSolicitacao)
-			solicitacoes.GET("/minhas", controllers.BuscarSolicitacoesPorUsuario)
-			solicitacoes.POST("/", controllers.CriarSolicitacao)
-			solicitacoes.DELETE("/:id", controllers.DeletarSolicitacao)
-		}
+		solicitacoes.GET("/minhas", controllers.BuscarSolicitacoesPorUsuario)
+		solicitacoes.GET("/recebidas", controllers.BuscarSolicitacoesRecebidas)
+		solicitacoes.GET("/:id", controllers.BuscarSolicitacao)
+		solicitacoes.POST("", controllers.CriarSolicitacao)
+		solicitacoes.PATCH("/:id", controllers.ResponderSolicitacao)
+		solicitacoes.DELETE("/:id", controllers.DeletarSolicitacao)
+
+		solicitacoes.GET("/:id/mensagens", controllers.BuscarMensagens)
+		solicitacoes.POST("/:id/mensagens", controllers.EnviarMensagem)
+	}
+}
+
+func registrarRotasDeAvaliacao(rg *gin.RouterGroup) {
+	avaliacoes := rg.Group("/avaliacoes", middlewares.Autenticar())
+	{
+		avaliacoes.POST("", controllers.CriarAvaliacao)
+	}
+}
+
+func registrarRotasDeFavorito(rg *gin.RouterGroup) {
+	favoritos := rg.Group("/favoritos", middlewares.Autenticar())
+	{
+		favoritos.GET("", controllers.BuscarFavoritos)
+		favoritos.POST("/:id", controllers.AdicionarFavorito)
+		favoritos.DELETE("/:id", controllers.RemoverFavorito)
 	}
 }

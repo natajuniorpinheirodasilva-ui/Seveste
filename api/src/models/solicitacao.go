@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+const (
+	StatusSolicitacaoPendente string = "PENDENTE"
+	StatusSolicitacaoAceita   string = "ACEITA"
+	StatusSolicitacaoRecusada string = "RECUSADA"
+)
+
 type Solicitacao struct {
 	ID        uint64    `json:"id_solicitacao"`
 	Status    string    `json:"status" binding:"required"`
@@ -38,7 +44,7 @@ func (s *Solicitacao) validar() error {
 		return errors.New("o id_usuario e obrigatorio e deve ser valido")
 	}
 
-	statusPermitidos := []string{"PENDENTE", "ACEITA", "RECUSADA"}
+	statusPermitidos := []string{StatusSolicitacaoPendente, StatusSolicitacaoAceita, StatusSolicitacaoRecusada}
 	if !slices.Contains(statusPermitidos, s.Status) {
 		return errors.New(`status invalido para a solicitadao, permitidos: ["PENDENTE", "ACEITA", "RECUSADA"]`)
 	}

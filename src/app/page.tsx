@@ -167,10 +167,11 @@ export default function Home() {
                     <div className="text-xl font-bold tracking-tighter text-seveste-dark">
                         Seveste.
                     </div>
-                    <div className="flex gap-6 text-sm font-medium text-seveste-muted">
-                        <Link href="/about" className="transition-colors duration-200 hover:text-seveste-green">Sobre</Link>
-                        <Link href="/terms" className="transition-colors duration-200 hover:text-seveste-green">Termos de Uso</Link>
-                        <Link href="/privacy" className="transition-colors duration-200 hover:text-seveste-green">Privacidade</Link>
+                    <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-seveste-muted">
+                        <Link href="/products" className="transition-colors duration-200 hover:text-seveste-green">Vitrine</Link>
+                        <Link href="/terms-of-use" className="transition-colors duration-200 hover:text-seveste-green">Termos de Uso</Link>
+                        <Link href="/privacy-policy" className="transition-colors duration-200 hover:text-seveste-green">Privacidade</Link>
+                        <Link href="/cookie-policy" className="transition-colors duration-200 hover:text-seveste-green">Cookies</Link>
                     </div>
                     <div className="text-sm text-seveste-muted">
                         © {new Date().getFullYear()} Seveste.

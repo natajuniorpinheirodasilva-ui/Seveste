@@ -41,7 +41,7 @@ export default function NotFound() {
                     </Link>
 
                     <Link
-                        href="/produtos"
+                        href="/products"
                         className="group flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-4 font-sans text-base font-semibold text-seveste-dark shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-seveste-dark hover:bg-slate-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-seveste-dark focus:ring-offset-2"
                     >
                         <Search className="h-5 w-5 text-seveste-muted transition-colors duration-300 group-hover:text-seveste-dark" />

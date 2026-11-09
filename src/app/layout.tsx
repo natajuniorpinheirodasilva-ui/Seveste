@@ -1,5 +1,6 @@
-import DebugNavigator from "@/components/DebugNavigator"
+import AuthProvider from "@/components/AuthProvider";
 import ChatBubble from "@/components/ChatBubble";
+import DebugNavigator from "@/components/DebugNavigator";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -35,9 +36,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body
         className="min-h-full flex flex-col"
       >
-        {children}
-        <DebugNavigator />
-        <ChatBubble />
+        <AuthProvider>
+          {children}
+          <DebugNavigator />
+          <ChatBubble />
+        </AuthProvider>
       </body>
     </html>
   );

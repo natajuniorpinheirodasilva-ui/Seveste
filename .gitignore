@@ -39,3 +39,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# fotos enviadas para a API (ambiente local)
+/api/uploads

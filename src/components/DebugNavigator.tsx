@@ -1,11 +1,95 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
-import { Bug, Home, PlusCircle, Search, Package, User, ChartBar, Heart, X, AlertCircleIcon } from "lucide-react"
+import {
+    Bug,
+    Home,
+    PlusCircle,
+    Search,
+    Package,
+    User,
+    ChartBar,
+    Heart,
+    X,
+    AlertCircleIcon,
+    LogIn,
+    UserPlus,
+    ShieldCheck,
+} from "lucide-react"
+
+// O navegador de desenvolvimento fica oculto por padrão.
+// Para exibir (ou ocultar) digite o Konami code: ↑ ↑ ↓ ↓ ← → ← → B A
+const SEQUENCIA = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"]
+const CHAVE_STORAGE = "seveste_dev_navigator"
+const EVENTO = "seveste:dev-navigator"
+
+function lerAtivo() {
+    try {
+        return sessionStorage.getItem(CHAVE_STORAGE) === "1"
+    } catch {
+        return false
+    }
+}
+
+function definirAtivo(ativo: boolean) {
+    try {
+        if (ativo) sessionStorage.setItem(CHAVE_STORAGE, "1")
+        else sessionStorage.removeItem(CHAVE_STORAGE)
+    } catch {
+        // sessionStorage indisponível: o estado vale só até recarregar a página
+    }
+    window.dispatchEvent(new Event(EVENTO))
+}
+
+function assinar(callback: () => void) {
+    window.addEventListener(EVENTO, callback)
+    return () => window.removeEventListener(EVENTO, callback)
+}
+
+const links = [
+    { href: "/", label: "Home", icon: Home },
+    { href: "/login", label: "Login", icon: LogIn },
+    { href: "/join", label: "Cadastro", icon: UserPlus },
+    { href: "/announce", label: "Anunciar", icon: PlusCircle },
+    { href: "/products", label: "Vitrine", icon: Search },
+    { href: "/products/1", label: "Produto (Detalhe)", icon: Package },
+    { href: "/profile", label: "Perfil", icon: User },
+    { href: "/dashboard", label: "Dashboard", icon: ChartBar },
+    { href: "/success", label: "Doação concluída.", icon: Heart },
+    { href: "/privacy-policy", label: "Privacidade", icon: ShieldCheck },
+    { href: "/404", label: "404", icon: AlertCircleIcon },
+]
 
 export default function DebugNavigator() {
+    const ativo = useSyncExternalStore(assinar, lerAtivo, () => false)
     const [isOpen, setIsOpen] = useState(true)
+
+    useEffect(() => {
+        let progresso = 0
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            const alvo = event.target as HTMLElement | null
+            if (alvo?.closest("input, textarea, select, [contenteditable='true']")) return
+
+            const tecla = event.key.toLowerCase()
+            if (tecla === SEQUENCIA[progresso]) {
+                progresso++
+                if (progresso === SEQUENCIA.length) {
+                    progresso = 0
+                    setIsOpen(true)
+                    definirAtivo(!lerAtivo())
+                }
+            } else {
+                progresso = tecla === SEQUENCIA[0] ? 1 : 0
+            }
+        }
+
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+    }, [])
+
+    if (!ativo) return null
 
     if (!isOpen) {
         return (
@@ -28,69 +112,16 @@ export default function DebugNavigator() {
                 </div>
 
                 <nav className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
-                    <Link
-                        href="/"
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                    >
-                        <Home className="h-3.5 w-3.5" />
-                        Home
-                    </Link>
-
-                    <Link
-                        href="/announce"
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                    >
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        Anunciar
-                    </Link>
-
-                    <Link
-                        href="/products"
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                    >
-                        <Search className="h-3.5 w-3.5" />
-                        Vitrine
-                    </Link>
-
-                    <Link
-                        href="/products/1"
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                    >
-                        <Package className="h-3.5 w-3.5" />
-                        Produto (Detalhe)
-                    </Link>
-
-                    <Link
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                        href="/profile"
-                    >
-                        <User className="h-3.5 w-3.5" />
-                        Perfil
-                    </Link>
-
-                    <Link
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                        href="/dashboard"
-                    >
-                        <ChartBar className="h-3.5 w-3.5" />
-                        Dashboard
-                    </Link>
-
-                    <Link
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                        href="/success"
-                    >
-                        <Heart className="h-3.5 w-3.5" />
-                        Doação concluída.
-                    </Link>
-
-                    <Link
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
-                        href="/404"
-                    >
-                        <AlertCircleIcon className="h-3.5 w-3.5" />
-                        404
-                    </Link>
+                    {links.map(({ href, label, icon: Icon }) => (
+                        <Link
+                            key={href}
+                            href={href}
+                            className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium transition-all hover:bg-slate-700 hover:text-white"
+                        >
+                            <Icon className="h-3.5 w-3.5" />
+                            {label}
+                        </Link>
+                    ))}
 
                     <div className="ml-2 h-6 w-px bg-slate-700 hidden sm:block"></div>
 

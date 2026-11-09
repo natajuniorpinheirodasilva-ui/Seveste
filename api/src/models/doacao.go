@@ -2,7 +2,21 @@ package models
 
 import (
 	"errors"
+	"slices"
 	"strings"
+	"time"
+)
+
+const (
+	StatusDoacaoDisponivel string = "disponivel"
+	StatusDoacaoDoada      string = "doada"
+
+	MaximoFotosPorDoacao int = 4
+)
+
+var (
+	CategoriasPermitidas = []string{"roupas", "agasalhos", "calcados", "acessorios", "infantil"}
+	EstadosPermitidos    = []string{"novo", "usado_excelente", "usado_marcas"}
 )
 
 type Doacao struct {
@@ -14,6 +28,21 @@ type Doacao struct {
 	Estado    string `json:"estado" binding:"required"`
 	Status    string `json:"status" binding:"required"`
 
+	// campos opcionais
+	Cor      string `json:"cor"`
+	Material string `json:"material"`
+	// bairro ou região aproximada - nunca o endereço completo
+	Local string `json:"local"`
+
+	// copiados do doador no momento da criação para permitir filtros por região
+	Cidade string `json:"cidade"`
+	UF     string `json:"uf"`
+
+	// nomes dos arquivos salvos na pasta de uploads
+	Fotos []string `json:"fotos"`
+
+	CriadoEm time.Time `json:"criado_em"`
+
 	UsuarioID uint64 `json:"usuario_id" binding:"required"`
 }
 
@@ -23,6 +52,9 @@ type AtualizacaoDoacao struct {
 	Categoria *string `json:"categoria"`
 	Tamanho   *string `json:"tamanho"`
 	Estado    *string `json:"estado"`
+	Cor       *string `json:"cor"`
+	Material  *string `json:"material"`
+	Local     *string `json:"local"`
 }
 
 func (d *Doacao) Preparar() error {
@@ -39,16 +71,43 @@ func (d *Doacao) Preparar() error {
 func (d *Doacao) formatar() {
 	d.Titulo = strings.TrimSpace(d.Titulo)
 	d.Descricao = strings.TrimSpace(d.Descricao)
-	d.Categoria = strings.TrimSpace(d.Categoria)
-	d.Tamanho = strings.TrimSpace(d.Tamanho)
-	d.Estado = strings.TrimSpace(d.Estado)
+	d.Categoria = strings.ToLower(strings.TrimSpace(d.Categoria))
+	d.Tamanho = strings.ToUpper(strings.TrimSpace(d.Tamanho))
+	d.Estado = strings.ToLower(strings.TrimSpace(d.Estado))
 	d.Status = strings.TrimSpace(d.Status)
+	d.Cor = strings.TrimSpace(d.Cor)
+	d.Material = strings.TrimSpace(d.Material)
+	d.Local = strings.TrimSpace(d.Local)
 }
 
 // valida se campos obrigatórios estão preenchidos
 func (d *Doacao) validar() error {
 	if (d.Titulo == "") || (d.Descricao == "") || (d.Categoria == "") || (d.Tamanho == "") || (d.Estado == "") || (d.Status == "") {
 		return errors.New("todos os campos sao obrigatorios e devem ser preenchidos")
+	}
+
+	if len(d.Titulo) > 80 {
+		return errors.New("o titulo deve ter no maximo 80 caracteres")
+	}
+
+	if len(d.Descricao) > 1000 {
+		return errors.New("a descricao deve ter no maximo 1000 caracteres")
+	}
+
+	if len(d.Tamanho) > 10 {
+		return errors.New("o tamanho deve ter no maximo 10 caracteres")
+	}
+
+	if len(d.Cor) > 40 || len(d.Material) > 40 || len(d.Local) > 80 {
+		return errors.New("cor, material ou local excedem o tamanho permitido")
+	}
+
+	if !slices.Contains(CategoriasPermitidas, d.Categoria) {
+		return errors.New("categoria invalida")
+	}
+
+	if !slices.Contains(EstadosPermitidos, d.Estado) {
+		return errors.New("estado de conservacao invalido")
 	}
 
 	return nil
@@ -58,54 +117,31 @@ func (d *Doacao) validar() error {
 func (d *Doacao) Mesclar(dados AtualizacaoDoacao) error {
 	alteracaoFeita := false
 
-	if dados.Titulo != nil {
-		titulo := strings.TrimSpace(*dados.Titulo)
-		if titulo == "" {
-			return errors.New("o campo 'Título' não pode estar vazio")
-		}
-		d.Titulo = titulo
-		alteracaoFeita = true
+	campos := []struct {
+		valor   *string
+		destino *string
+	}{
+		{dados.Titulo, &d.Titulo},
+		{dados.Descricao, &d.Descricao},
+		{dados.Categoria, &d.Categoria},
+		{dados.Tamanho, &d.Tamanho},
+		{dados.Estado, &d.Estado},
+		{dados.Cor, &d.Cor},
+		{dados.Material, &d.Material},
+		{dados.Local, &d.Local},
 	}
 
-	if dados.Descricao != nil {
-		descricao := strings.TrimSpace(*dados.Descricao)
-		if descricao == "" {
-			return errors.New("o campo 'Descrição' não pode estar vazio")
+	for _, campo := range campos {
+		if campo.valor != nil {
+			*campo.destino = *campo.valor
+			alteracaoFeita = true
 		}
-		d.Descricao = descricao
-		alteracaoFeita = true
-	}
-
-	if dados.Categoria != nil {
-		categoria := strings.TrimSpace(*dados.Categoria)
-		if categoria == "" {
-			return errors.New("o campo 'Categoria' não pode estar vazio")
-		}
-		d.Categoria = categoria
-		alteracaoFeita = true
-	}
-
-	if dados.Tamanho != nil {
-		tamanho := strings.TrimSpace(*dados.Tamanho)
-		if tamanho == "" {
-			return errors.New("o campo 'Tamanho' não pode estar vazio")
-		}
-		d.Tamanho = tamanho
-		alteracaoFeita = true
-	}
-
-	if dados.Estado != nil {
-		estado := strings.TrimSpace(*dados.Estado)
-		if estado == "" {
-			return errors.New("o campo 'Estado' não pode estar vazio")
-		}
-		d.Estado = estado
-		alteracaoFeita = true
 	}
 
 	if !alteracaoFeita {
 		return errors.New("nenhum dado fornecido para atualização")
 	}
 
-	return nil
+	// reaproveita a mesma formatação e validação da criação
+	return d.Preparar()
 }
