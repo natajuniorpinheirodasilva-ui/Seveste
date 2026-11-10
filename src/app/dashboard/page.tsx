@@ -6,10 +6,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useRequireAuth } from "@/components/AuthProvider"
 import AccountSettings from "@/components/AccountSettings"
+import ContactCard from "@/components/ContactCard"
 import DonationPhoto from "@/components/DonationPhoto"
 import { EmptyState, ErrorMessage, Loading } from "@/components/Feedback"
 import { api, mensagemDeErro } from "@/lib/api"
-import { abrirChat } from "@/lib/chat"
 import { localizacao, tempoRelativo } from "@/lib/format"
 import type { Doacao, Solicitacao, StatusSolicitacao } from "@/lib/types"
 import {
@@ -21,7 +21,7 @@ import {
     CheckCircle2,
     MapPin,
     Inbox,
-    MessageCircle,
+    Contact,
     Star,
     UserCog,
     PlusCircle,
@@ -58,6 +58,7 @@ export default function Dashboard({
     const [concluindo, setConcluindo] = useState<number | null>(null)
     const [excluindo, setExcluindo] = useState<number | null>(null)
     const [processando, setProcessando] = useState(false)
+    const [contatoAberto, setContatoAberto] = useState<number | null>(null)
 
     const abas: { id: Aba; rotulo: string; icon: LucideIcon }[] = ehDoador
         ? [
@@ -165,7 +166,8 @@ export default function Dashboard({
         const status = STATUS[s.status]
 
         return (
-            <div key={s.id_solicitacao} className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
+            <div key={s.id_solicitacao} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Link href={`/products/${s.id_doacao}`} className="relative flex h-16 w-16 shrink-0 items-center justify-center self-center overflow-hidden rounded-xl bg-slate-100">
                     <DonationPhoto foto={s.doacao?.fotos[0]} alt={s.doacao?.titulo ?? "Doação"} iconClassName="h-6 w-6" />
                 </Link>
@@ -181,9 +183,13 @@ export default function Dashboard({
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                     <span className={`rounded-full border px-3 py-1 text-sm font-medium ${status.classe}`}>{status.rotulo}</span>
-                    {s.status !== "RECUSADA" && (
-                        <button onClick={() => abrirChat(s.id_solicitacao)} className={botaoSecundario}>
-                            <MessageCircle className="h-3.5 w-3.5" /> Conversar
+                    {s.contato && (
+                        <button
+                            onClick={() => setContatoAberto(contatoAberto === s.id_solicitacao ? null : s.id_solicitacao)}
+                            aria-expanded={contatoAberto === s.id_solicitacao}
+                            className={botaoSecundario}
+                        >
+                            <Contact className="h-3.5 w-3.5" /> {contatoAberto === s.id_solicitacao ? "Ocultar contato" : "Ver contato"}
                         </button>
                     )}
                     {ehDoador && s.status === "PENDENTE" && (
@@ -211,6 +217,12 @@ export default function Dashboard({
                         </Link>
                     )}
                 </div>
+            </div>
+            {s.contato && contatoAberto === s.id_solicitacao && (
+                <div className="mt-4">
+                    <ContactCard contato={s.contato} tipoEntrega={s.doacao?.tipo_de_entrega} souDoador={ehDoador} />
+                </div>
+            )}
             </div>
         )
     }

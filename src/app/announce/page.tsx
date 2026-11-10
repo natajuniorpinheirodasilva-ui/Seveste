@@ -8,6 +8,7 @@ import { useRequireAuth } from "@/components/AuthProvider"
 import DonationPhoto from "@/components/DonationPhoto"
 import { ErrorMessage, Loading } from "@/components/Feedback"
 import { api, mensagemDeErro } from "@/lib/api"
+import { comprimirImagem } from "@/lib/imagem"
 import {
     CATEGORIAS,
     CONDICOES,
@@ -15,6 +16,7 @@ import {
     TAMANHOS_LETRA,
     TAMANHOS_NUMERICOS,
     TAMANHO_MAXIMO_FOTO,
+    TIPOS_ENTREGA,
 } from "@/lib/constants"
 import type { Doacao } from "@/lib/types"
 import {
@@ -24,6 +26,7 @@ import {
     MapPin,
     CheckCircle2,
     AlertCircle,
+    Truck,
     X
 } from "lucide-react"
 
@@ -31,14 +34,15 @@ type Campos = {
     titulo: string
     categoria: string
     tamanho: string
-    estado: string
+    condicao: string
+    tipo_de_entrega: string
     descricao: string
     cor: string
     material: string
     local: string
 }
 
-const CAMPOS_VAZIOS: Campos = { titulo: "", categoria: "", tamanho: "", estado: "", descricao: "", cor: "", material: "", local: "" }
+const CAMPOS_VAZIOS: Campos = { titulo: "", categoria: "", tamanho: "", condicao: "", tipo_de_entrega: "", descricao: "", cor: "", material: "", local: "" }
 
 type FotoNova = { arquivo: File; preview: string }
 
@@ -62,6 +66,7 @@ export default function AnnounceDonation({
     const [fotosNovas, setFotosNovas] = useState<FotoNova[]>([])
     const [carregandoDoacao, setCarregandoDoacao] = useState(!!idEdicao)
     const [enviando, setEnviando] = useState(false)
+    const [preparandoFotos, setPreparandoFotos] = useState(false)
     const [erro, setErro] = useState<string | null>(null)
 
     // no modo de edição, carrega os dados atuais do anúncio
@@ -78,7 +83,8 @@ export default function AnnounceDonation({
                     titulo: doacao.titulo,
                     categoria: doacao.categoria,
                     tamanho: doacao.tamanho,
-                    estado: doacao.estado,
+                    condicao: doacao.condicao,
+                    tipo_de_entrega: doacao.tipo_de_entrega,
                     descricao: doacao.descricao,
                     cor: doacao.cor,
                     material: doacao.material,
@@ -104,7 +110,8 @@ export default function AnnounceDonation({
     const fotosVisiveis = fotosExistentes.filter((foto) => !fotosRemovidas.includes(foto))
     const vagas = MAXIMO_FOTOS - fotosVisiveis.length - fotosNovas.length
 
-    const handleSelecionarFotos = (event: ChangeEvent<HTMLInputElement>) => {
+    // as fotos são reduzidas no navegador (máx. 1280px, até 1MB) antes de entrar na lista de envio
+    const handleSelecionarFotos = async (event: ChangeEvent<HTMLInputElement>) => {
         const arquivos = Array.from(event.target.files ?? [])
         event.target.value = ""
         setErro(null)
@@ -115,7 +122,7 @@ export default function AnnounceDonation({
                 return false
             }
             if (arquivo.size > TAMANHO_MAXIMO_FOTO) {
-                setErro(`"${arquivo.name}" é maior que 5MB.`)
+                setErro(`"${arquivo.name}" é maior que 20MB.`)
                 return false
             }
             return true
@@ -125,9 +132,20 @@ export default function AnnounceDonation({
             setErro(`Você pode adicionar no máximo ${MAXIMO_FOTOS} fotos por anúncio.`)
         }
 
-        const adicionadas = validos.slice(0, Math.max(vagas, 0)).map((arquivo) => ({ arquivo, preview: URL.createObjectURL(arquivo) }))
+        setPreparandoFotos(true)
+        const adicionadas: FotoNova[] = []
+        for (const arquivo of validos.slice(0, Math.max(vagas, 0))) {
+            try {
+                const reduzida = await comprimirImagem(arquivo)
+                adicionadas.push({ arquivo: reduzida, preview: URL.createObjectURL(reduzida) })
+            } catch (e) {
+                setErro(mensagemDeErro(e))
+            }
+        }
+        setPreparandoFotos(false)
+
         previews.current.push(...adicionadas.map(({ preview }) => preview))
-        setFotosNovas([...fotosNovas, ...adicionadas])
+        setFotosNovas((atuais) => [...atuais, ...adicionadas])
     }
 
     const removerFotoNova = (index: number) => {
@@ -138,8 +156,13 @@ export default function AnnounceDonation({
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
-        if (!campos.estado) {
+        if (!campos.condicao) {
             setErro("Selecione a condição da peça.")
+            return
+        }
+
+        if (!campos.tipo_de_entrega) {
+            setErro("Selecione como a peça será entregue.")
             return
         }
 
@@ -158,9 +181,10 @@ export default function AnnounceDonation({
                 id = String(criado.id_doacao)
             }
 
-            if (fotosNovas.length > 0) {
+            // uma foto por requisição: a Vercel aceita no máximo 4,5 MB por requisição
+            for (const { arquivo } of fotosNovas) {
                 const formulario = new FormData()
-                fotosNovas.forEach(({ arquivo }) => formulario.append("fotos", arquivo))
+                formulario.append("fotos", arquivo)
                 await api(`/doacoes/${id}/fotos`, { method: "POST", body: formulario })
             }
 
@@ -248,7 +272,7 @@ export default function AnnounceDonation({
                                         <UploadCloud className="h-8 w-8 text-seveste-muted group-hover:text-seveste-green" />
                                     </div>
                                     <p className="font-medium text-seveste-dark">Clique ou arraste as fotos aqui</p>
-                                    <p className="mt-1 text-sm text-seveste-muted">PNG, JPG ou WEBP de até 5MB. Máximo de 4 fotos.</p>
+                                    <p className="mt-1 text-sm text-seveste-muted">{preparandoFotos ? "Preparando fotos..." : "PNG, JPG ou WEBP. Máximo de 4 fotos (elas são reduzidas antes do envio)."}</p>
                                     <input
                                         type="file"
                                         onChange={handleSelecionarFotos}
@@ -314,8 +338,8 @@ export default function AnnounceDonation({
                                                     type="radio"
                                                     name="condition"
                                                     value={valor}
-                                                    checked={campos.estado === valor}
-                                                    onChange={atualizar("estado")}
+                                                    checked={campos.condicao === valor}
+                                                    onChange={atualizar("condicao")}
                                                     className="sr-only"
                                                 />
                                                 {rotulo}
@@ -342,7 +366,7 @@ export default function AnnounceDonation({
                                         rows={4}
                                         value={campos.descricao}
                                         onChange={atualizar("descricao")}
-                                        maxLength={1000}
+                                        maxLength={300}
                                         required
                                         placeholder="Conte um pouco sobre a peça, detalhes de tecido, modelagem ou motivo da doação..."
                                         className="w-full resize-none rounded-lg border border-gray-300 bg-white px-4 py-3 text-base outline-none transition-colors duration-200 hover:border-seveste-green focus:border-seveste-green focus:ring-1 focus:ring-seveste-green"
@@ -353,26 +377,46 @@ export default function AnnounceDonation({
 
                         <hr className="border-gray-100" />
 
-                        {/* Seção de Retirada */}
+                        {/* Seção de Entrega */}
                         <section>
                             <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-                                <MapPin className="h-5 w-5 text-seveste-accent" />
-                                Local de retirada
+                                <Truck className="h-5 w-5 text-seveste-accent" />
+                                Entrega
                             </h2>
+
+                            <span className={labelClass}>Como a peça vai chegar até a pessoa? *</span>
+                            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                {TIPOS_ENTREGA.map(({ valor, rotulo }) => (
+                                    <label key={valor} className="group flex cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white p-3 text-sm text-seveste-muted transition-all duration-200 hover:border-seveste-green hover:bg-seveste-green/5 hover:text-seveste-dark has-checked:border-seveste-green has-checked:bg-seveste-green/10 has-checked:text-seveste-dark has-checked:font-semibold has-focus-visible:ring-2 has-focus-visible:ring-seveste-green">
+                                        <input
+                                            type="radio"
+                                            name="delivery"
+                                            value={valor}
+                                            checked={campos.tipo_de_entrega === valor}
+                                            onChange={atualizar("tipo_de_entrega")}
+                                            className="sr-only"
+                                        />
+                                        {rotulo}
+                                    </label>
+                                ))}
+                            </div>
+
                             <div>
-                                <label htmlFor="location" className={labelClass}>Bairro ou região aproximada</label>
+                                <label htmlFor="location" className={labelClass}>
+                                    <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4 text-seveste-accent" /> Bairro ou região aproximada (aparece no anúncio)</span>
+                                </label>
                                 <input
                                     type="text"
                                     id="location"
                                     value={campos.local}
                                     onChange={atualizar("local")}
                                     maxLength={80}
-                                    placeholder="Ex: Centro, Próximo ao metrô..."
+                                    placeholder="Ex: Centro, Vila dos Lavradores..."
                                     className={inputClass}
                                 />
                                 <p className="mt-2 flex items-center gap-1.5 text-xs text-seveste-muted">
                                     <AlertCircle className="h-3.5 w-3.5" />
-                                    Por segurança, não informe seu endereço completo aqui. Combine no chat.
+                                    Por segurança, não informe seu endereço completo aqui.
                                 </p>
                                 {usuario && (
                                     <p className="mt-1 text-xs text-seveste-muted">
@@ -387,7 +431,7 @@ export default function AnnounceDonation({
                         <div className="flex flex-col gap-3 pt-4">
                             <button
                                 type="submit"
-                                disabled={enviando}
+                                disabled={enviando || preparandoFotos}
                                 className="w-full rounded-lg border border-seveste-dark bg-seveste-dark px-6 py-4 font-sans text-base font-semibold tracking-wide text-seveste-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-seveste-green hover:bg-seveste-green hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seveste-green disabled:cursor-wait disabled:opacity-60"
                             >
                                 {enviando ? "Salvando..." : idEdicao ? "Salvar alterações" : "Publicar doação"}
@@ -430,7 +474,7 @@ export default function AnnounceDonation({
                         <div className="rounded-2xl border border-gray-200 bg-white p-6">
                             <h3 className="font-bold text-seveste-dark mb-2">O que acontece agora?</h3>
                             <p className="text-sm text-seveste-muted leading-relaxed">
-                                Seu anúncio ficará visível na vitrine. Pessoas interessadas poderão enviar uma mensagem pelo nosso chat seguro para combinar a retirada com você.
+                                Seu anúncio ficará visível na vitrine. Pessoas interessadas enviarão uma solicitação, que aparece em Minha Conta. Ao aceitar uma delas, você recebe o contato e o endereço da pessoa para fazer a entrega.
                             </p>
                         </div>
                     </aside>

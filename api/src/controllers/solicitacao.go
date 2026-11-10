@@ -4,9 +4,8 @@ import (
 	"net/http"
 	"seveste-api/src/models"
 	"seveste-api/src/repositories/repo_doacao"
-	"seveste-api/src/repositories/repo_mensagem"
 	"seveste-api/src/repositories/repo_solicitacao"
-	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,58 +14,41 @@ import (
 
 type solicitacaoInput struct {
 	DoacaoID uint64 `json:"id_doacao" binding:"required"`
-	// mensagem opcional enviada ao doador junto com a solicitação
-	Mensagem string `json:"mensagem"`
 }
 
 type respostaSolicitacaoInput struct {
 	Status string `json:"status" binding:"required"`
 }
 
-type mensagemInput struct {
-	Texto string `json:"texto" binding:"required"`
-}
-
-// busca a solicitação da rota e garante que o usuário logado participa dela
-// (é quem solicitou ou é o dono da doação)
-func buscarSolicitacaoDoParticipante(c *gin.Context) (*models.Solicitacao, *models.Doacao, bool) {
-	solicitacaoID, ok := lerID(c, "id")
-	if !ok {
-		return nil, nil, false
+// exibe uma solicitação (apenas para quem solicitou ou para o dono da doação)
+func BuscarSolicitacao(c *gin.Context) {
+	paramID := c.Param("id")
+	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
 	}
 
-	solicitacao, err := repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
+	var solicitacao *models.Solicitacao
+	solicitacao, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
-		return nil, nil, false
+		return
 	}
 
 	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(solicitacao.DoacaoID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": "a doacao desta solicitacao nao existe mais"})
-		return nil, nil, false
-	}
-
-	tokenID := c.GetUint64("usuario_id")
-	if tokenID != solicitacao.UsuarioID && tokenID != doacao.UsuarioID {
-		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para acessar essa solicitação"})
-		return nil, nil, false
-	}
-
-	return solicitacao, doacao, true
-}
-
-func ordenarSolicitacoes(lista []models.Solicitacao) {
-	sort.Slice(lista, func(i, j int) bool { return lista[i].CriadoEm.After(lista[j].CriadoEm) })
-}
-
-func BuscarSolicitacao(c *gin.Context) {
-	solicitacao, _, ok := buscarSolicitacaoDoParticipante(c)
-	if !ok {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"solicitacao": montarRespostaSolicitacao(*solicitacao, c.GetUint64("usuario_id"))})
+	var tokenID = c.GetUint64("usuario_id")
+	if tokenID != solicitacao.UsuarioID && tokenID != doacao.UsuarioID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para acessar essa solicitação"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"solicitacao": montarRespostaSolicitacao(*solicitacao, tokenID)})
 }
 
 // solicitações feitas pelo usuário logado
@@ -83,48 +65,55 @@ func BuscarSolicitacoesPorUsuario(c *gin.Context) {
 		return
 	}
 
-	ordenarSolicitacoes(solicitacoes)
 	c.JSON(http.StatusOK, gin.H{"solicitacoes": montarRespostasSolicitacoes(solicitacoes, tokenID)})
 }
 
 // solicitações recebidas nas doações do usuário logado
 func BuscarSolicitacoesRecebidas(c *gin.Context) {
 	var tokenID = c.GetUint64("usuario_id")
+	if tokenID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
+		return
+	}
 
-	doacoes, err := repo_doacao.DoacaoRepo.BuscarTodas()
+	recebidas, err := repo_solicitacao.SolicitacaoRepo.BuscarPorDoadorID(tokenID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar solicitações"})
 		return
 	}
 
-	recebidas := []models.Solicitacao{}
-	for _, d := range doacoes {
-		if d.UsuarioID != tokenID {
-			continue
-		}
-		daDoacao, _ := repo_solicitacao.SolicitacaoRepo.BuscarPorDoacaoID(d.ID)
-		recebidas = append(recebidas, daDoacao...)
-	}
-
-	ordenarSolicitacoes(recebidas)
 	c.JSON(http.StatusOK, gin.H{"solicitacoes": montarRespostasSolicitacoes(recebidas, tokenID)})
 }
 
 // solicitações de uma doação (apenas o dono da doação)
 func BuscarSolicitacoesPorDoacao(c *gin.Context) {
-	doacao, ok := buscarDoacaoDoUsuario(c)
-	if !ok {
+	paramID := c.Param("id")
+	doacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	solicitacoes, err := repo_solicitacao.SolicitacaoRepo.BuscarPorDoacaoID(doacao.ID)
+	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if doacao.UsuarioID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para ver as solicitações dessa doação"})
+		return
+	}
+
+	var solicitacoes []models.Solicitacao
+	solicitacoes, err = repo_solicitacao.SolicitacaoRepo.BuscarPorDoacaoID(doacaoID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar solicitações"})
 		return
 	}
 
-	ordenarSolicitacoes(solicitacoes)
-	c.JSON(http.StatusOK, gin.H{"solicitacoes": montarRespostasSolicitacoes(solicitacoes, doacao.UsuarioID)})
+	c.JSON(http.StatusOK, gin.H{"solicitacoes": montarRespostasSolicitacoes(solicitacoes, tokenID)})
 }
 
 func CriarSolicitacao(c *gin.Context) {
@@ -135,11 +124,12 @@ func CriarSolicitacao(c *gin.Context) {
 		return
 	}
 
-	var tokenID = c.GetUint64("usuario_id")
-	if c.GetString("usuario_tipo") != models.TipoAcolhido {
+	var usuarioTipo string = c.GetString("usuario_tipo")
+	if usuarioTipo != models.TipoAcolhido {
 		c.JSON(http.StatusForbidden, gin.H{"erro": "somente acolhidos podem solicitar doacoes"})
 		return
 	}
+	var tokenID = c.GetUint64("usuario_id")
 
 	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(input.DoacaoID)
 	if err != nil {
@@ -177,23 +167,10 @@ func CriarSolicitacao(c *gin.Context) {
 		return
 	}
 
-	texto := strings.TrimSpace(input.Mensagem)
-	if len(texto) > 1000 {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "a mensagem deve ter no maximo 1000 caracteres"})
-		return
-	}
-
 	criada, err := repo_solicitacao.SolicitacaoRepo.Criar(&novo)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
-	}
-
-	if texto != "" {
-		mensagem := models.Mensagem{SolicitacaoID: criada.ID, UsuarioID: tokenID, Texto: texto, EnviadaEm: time.Now()}
-		if mensagem.Preparar() == nil {
-			_, _ = repo_mensagem.MensagemRepo.Criar(&mensagem)
-		}
 	}
 
 	c.JSON(http.StatusCreated, montarRespostaSolicitacao(*criada, tokenID))
@@ -202,19 +179,34 @@ func CriarSolicitacao(c *gin.Context) {
 // ResponderSolicitacao permite ao dono da doação aceitar ou recusar uma solicitação pendente.
 // Ao aceitar, a doação é marcada como doada e as demais solicitações pendentes são recusadas.
 func ResponderSolicitacao(c *gin.Context) {
-	solicitacao, doacao, ok := buscarSolicitacaoDoParticipante(c)
-	if !ok {
+	paramID := c.Param("id")
+	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	tokenID := c.GetUint64("usuario_id")
+	var solicitacao *models.Solicitacao
+	solicitacao, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(solicitacao.DoacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "a doacao desta solicitacao nao existe mais"})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
 	if doacao.UsuarioID != tokenID {
 		c.JSON(http.StatusForbidden, gin.H{"erro": "somente o doador pode responder a solicitacao"})
 		return
 	}
 
 	var input respostaSolicitacaoInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err = c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
@@ -237,7 +229,7 @@ func ResponderSolicitacao(c *gin.Context) {
 		}
 
 		doacao.Status = models.StatusDoacaoDoada
-		if _, err := repo_doacao.DoacaoRepo.Salvar(doacao.ID, doacao); err != nil {
+		if _, err = repo_doacao.DoacaoRepo.Salvar(doacao.ID, doacao); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 			return
 		}
@@ -252,7 +244,7 @@ func ResponderSolicitacao(c *gin.Context) {
 	}
 
 	solicitacao.Status = novoStatus
-	atualizada, err := repo_solicitacao.SolicitacaoRepo.Salvar(solicitacao.ID, solicitacao)
+	atualizada, err := repo_solicitacao.SolicitacaoRepo.Salvar(solicitacaoID, solicitacao)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
@@ -262,13 +254,15 @@ func ResponderSolicitacao(c *gin.Context) {
 }
 
 func DeletarSolicitacao(c *gin.Context) {
-	solicitacaoID, ok := lerID(c, "id")
-	if !ok {
+	paramID := c.Param("id")
+	solicitacaoID, err := strconv.ParseUint(paramID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
 	var solicitacao *models.Solicitacao
-	solicitacao, err := repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
+	solicitacao, err = repo_solicitacao.SolicitacaoRepo.BuscarPorID(solicitacaoID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 		return
@@ -290,65 +284,10 @@ func DeletarSolicitacao(c *gin.Context) {
 		return
 	}
 
-	_ = repo_mensagem.MensagemRepo.DeletarPorSolicitacaoID(solicitacaoID)
 	if err = repo_solicitacao.SolicitacaoRepo.Deletar(solicitacaoID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
 	c.Status(http.StatusNoContent)
-}
-
-// mensagens trocadas dentro de uma solicitação (apenas participantes)
-func BuscarMensagens(c *gin.Context) {
-	solicitacao, _, ok := buscarSolicitacaoDoParticipante(c)
-	if !ok {
-		return
-	}
-
-	mensagens, err := repo_mensagem.MensagemRepo.BuscarPorSolicitacaoID(solicitacao.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar mensagens"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"mensagens": mensagens})
-}
-
-func EnviarMensagem(c *gin.Context) {
-	solicitacao, _, ok := buscarSolicitacaoDoParticipante(c)
-	if !ok {
-		return
-	}
-
-	if solicitacao.Status == models.StatusSolicitacaoRecusada {
-		c.JSON(http.StatusConflict, gin.H{"erro": "esta solicitacao foi recusada e a conversa foi encerrada"})
-		return
-	}
-
-	var input mensagemInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
-		return
-	}
-
-	nova := models.Mensagem{
-		SolicitacaoID: solicitacao.ID,
-		UsuarioID:     c.GetUint64("usuario_id"),
-		Texto:         input.Texto,
-		EnviadaEm:     time.Now(),
-	}
-
-	if err := nova.Preparar(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
-		return
-	}
-
-	criada, err := repo_mensagem.MensagemRepo.Criar(&nova)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, criada)
 }

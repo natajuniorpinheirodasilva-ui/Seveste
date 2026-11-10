@@ -7,6 +7,8 @@ type SolicitacaoRepositorio interface {
 	BuscarPorID(solicitacaoID uint64) (*models.Solicitacao, error)
 	BuscarPorDoacaoID(doacaoID uint64) ([]models.Solicitacao, error)
 	BuscarPorUsuarioID(usuarioID uint64) ([]models.Solicitacao, error)
+	// solicitações recebidas nas doações de um doador
+	BuscarPorDoadorID(doadorID uint64) ([]models.Solicitacao, error)
 	Salvar(solicitacaoID uint64, nova *models.Solicitacao) (*models.Solicitacao, error)
 	Deletar(solicitacaoID uint64) error
 }

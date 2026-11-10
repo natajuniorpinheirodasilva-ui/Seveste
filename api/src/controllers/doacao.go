@@ -4,12 +4,7 @@ import (
 	"net/http"
 	"seveste-api/src/models"
 	"seveste-api/src/repositories/repo_doacao"
-	"seveste-api/src/repositories/repo_favorito"
-	"seveste-api/src/repositories/repo_mensagem"
-	"seveste-api/src/repositories/repo_solicitacao"
 	"seveste-api/src/repositories/repo_usuario"
-	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -22,10 +17,12 @@ type doacaoInput struct {
 	Descricao string `json:"descricao" binding:"required"`
 	Categoria string `json:"categoria" binding:"required"`
 	Tamanho   string `json:"tamanho" binding:"required"`
-	Estado    string `json:"estado" binding:"required"`
-	Cor       string `json:"cor"`
-	Material  string `json:"material"`
-	Local     string `json:"local"`
+	Condicao  string `json:"condicao" binding:"required"`
+	// "levar" (o doador leva) ou "frete" (enviada por frete)
+	TipoDeEntrega string `json:"tipo_de_entrega" binding:"required"`
+	Cor           string `json:"cor"`
+	Material      string `json:"material"`
+	Local         string `json:"local"`
 }
 
 // separa um parâmetro de query do tipo "a,b,c" em uma lista
@@ -46,85 +43,46 @@ func listaDaQuery(c *gin.Context, nome string) []string {
 }
 
 // BuscarDoacoes lista as doações aceitando filtros opcionais via query string:
-// status (padrão "disponivel"; use "todas" para todas), categoria, estado, tamanho (listas separadas por vírgula),
-// uf, cidade, busca (texto no título/descrição), usuario_id e limite.
+// status (padrão "disponivel"; use "todas" para todas), categoria, condicao, tamanho (listas separadas por vírgula),
+// uf, cidade, busca (texto no título/descrição), usuario_id, excluir e limite.
 func BuscarDoacoes(c *gin.Context) {
-	doacoes, err := repo_doacao.DoacaoRepo.BuscarTodas()
+	filtro := repo_doacao.FiltroDoacao{
+		Status:     strings.ToLower(c.DefaultQuery("status", models.StatusDoacaoDisponivel)),
+		Categorias: listaDaQuery(c, "categoria"),
+		Condicoes:  listaDaQuery(c, "condicao"),
+		Tamanhos:   listaDaQuery(c, "tamanho"),
+		UF:         strings.ToUpper(strings.TrimSpace(c.Query("uf"))),
+		Cidade:     strings.TrimSpace(c.Query("cidade")),
+		Busca:      strings.TrimSpace(c.Query("busca")),
+	}
+	if filtro.Status == "todas" {
+		filtro.Status = ""
+	}
+	filtro.UsuarioID, _ = strconv.ParseUint(c.Query("usuario_id"), 10, 64)
+	filtro.Excluir, _ = strconv.ParseUint(c.Query("excluir"), 10, 64)
+	if limite, err := strconv.Atoi(c.Query("limite")); err == nil && limite > 0 {
+		filtro.Limite = min(limite, 100)
+	}
+
+	doacoes, err := repo_doacao.DoacaoRepo.Buscar(filtro)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "erro ao buscar doacoes"})
 		return
 	}
 
-	status := strings.ToLower(c.DefaultQuery("status", models.StatusDoacaoDisponivel))
-	categorias := listaDaQuery(c, "categoria")
-	estados := listaDaQuery(c, "estado")
-	tamanhos := listaDaQuery(c, "tamanho")
-	uf := strings.ToUpper(strings.TrimSpace(c.Query("uf")))
-	cidade := strings.ToLower(strings.TrimSpace(c.Query("cidade")))
-	busca := strings.ToLower(strings.TrimSpace(c.Query("busca")))
-	usuarioID, _ := strconv.ParseUint(c.Query("usuario_id"), 10, 64)
-	excluir, _ := strconv.ParseUint(c.Query("excluir"), 10, 64)
-
-	filtradas := []models.Doacao{}
-	for _, d := range doacoes {
-		if status != "todas" && d.Status != status {
-			continue
-		}
-		if len(categorias) > 0 && !slices.Contains(categorias, d.Categoria) {
-			continue
-		}
-		if len(estados) > 0 && !slices.Contains(estados, d.Estado) {
-			continue
-		}
-		if len(tamanhos) > 0 && !slices.Contains(tamanhos, strings.ToLower(d.Tamanho)) {
-			continue
-		}
-		if uf != "" && d.UF != uf {
-			continue
-		}
-		if cidade != "" && !strings.Contains(strings.ToLower(d.Cidade), cidade) {
-			continue
-		}
-		if busca != "" && !strings.Contains(strings.ToLower(d.Titulo+" "+d.Descricao), busca) {
-			continue
-		}
-		if usuarioID != 0 && d.UsuarioID != usuarioID {
-			continue
-		}
-		if excluir != 0 && d.ID == excluir {
-			continue
-		}
-		filtradas = append(filtradas, d)
-	}
-
-	// mais recentes primeiro
-	sort.Slice(filtradas, func(i, j int) bool {
-		if filtradas[i].CriadoEm.Equal(filtradas[j].CriadoEm) {
-			return filtradas[i].ID > filtradas[j].ID
-		}
-		return filtradas[i].CriadoEm.After(filtradas[j].CriadoEm)
-	})
-
-	if limite, err := strconv.Atoi(c.Query("limite")); err == nil && limite > 0 && limite < len(filtradas) {
-		filtradas = filtradas[:limite]
-	}
-
-	usuarioLogado := c.GetUint64("usuario_id")
-	respostas := make([]respostaDoacao, 0, len(filtradas))
-	for _, d := range filtradas {
-		respostas = append(respostas, montarRespostaDoacao(d, usuarioLogado))
-	}
-
-	c.JSON(http.StatusOK, gin.H{"doacoes": respostas})
+	c.JSON(http.StatusOK, gin.H{"doacoes": montarRespostasDoacoes(doacoes, c.GetUint64("usuario_id"))})
 }
 
 func BuscarDoacao(c *gin.Context) {
-	doacaoID, ok := lerID(c, "id")
-	if !ok {
+	var ID string = c.Param("id")
+	doacaoID, err := strconv.ParseUint(ID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	var doacao *models.Doacao
+	doacao, err = repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 		return
@@ -159,13 +117,14 @@ func CriarDoacao(c *gin.Context) {
 	nova.Descricao = input.Descricao
 	nova.Categoria = input.Categoria
 	nova.Tamanho = input.Tamanho
-	nova.Estado = input.Estado
+	nova.Condicao = input.Condicao
+	nova.TipoDeEntrega = input.TipoDeEntrega
 	nova.Cor = input.Cor
 	nova.Material = input.Material
 	nova.Local = input.Local
 	nova.Status = models.StatusDoacaoDisponivel
-	nova.Cidade = doador.Cidade
-	nova.UF = doador.UF
+	// a doação fica vinculada ao endereço do doador (tabela Endereco)
+	nova.EnderecoID = doador.EnderecoID
 	nova.Fotos = []string{}
 	nova.CriadoEm = time.Now()
 	nova.UsuarioID = usuarioID
@@ -184,51 +143,43 @@ func CriarDoacao(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"criado": montarRespostaDoacao(*criado, usuarioID)})
 }
 
-// busca a doação da rota e garante que o usuário logado é o dono dela
-func buscarDoacaoDoUsuario(c *gin.Context) (*models.Doacao, bool) {
-	doacaoID, ok := lerID(c, "id")
-	if !ok {
-		return nil, false
+func AtualizarDoacao(c *gin.Context) {
+	var stringID = c.Param("id")
+	doacaoID, err := strconv.ParseUint(stringID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
 	}
 
 	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
-		return nil, false
+		return
 	}
 
 	var tokenID = c.GetUint64("usuario_id")
 	if tokenID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
-		return nil, false
+		return
 	}
 
 	if doacao.UsuarioID != tokenID {
 		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para alterar essa doação"})
-		return nil, false
-	}
-
-	return doacao, true
-}
-
-func AtualizarDoacao(c *gin.Context) {
-	doacao, ok := buscarDoacaoDoUsuario(c)
-	if !ok {
 		return
 	}
 
 	var input models.AtualizacaoDoacao
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err = c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	if err := doacao.Mesclar(input); err != nil {
+	if err = doacao.Mesclar(input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	atualizada, err := repo_doacao.DoacaoRepo.Salvar(doacao.ID, doacao)
+	atualizada, err := repo_doacao.DoacaoRepo.Salvar(doacaoID, doacao)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
@@ -238,32 +189,36 @@ func AtualizarDoacao(c *gin.Context) {
 }
 
 func DeletarDoacao(c *gin.Context) {
-	doacao, ok := buscarDoacaoDoUsuario(c)
-	if !ok {
+	var stringID string = c.Param("id")
+	doacaoID, err := strconv.ParseUint(stringID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	if err := removerDoacaoEmCascata(doacao); err != nil {
+	var doacao *models.Doacao
+	doacao, err = repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if tokenID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"erro": "sessão não identificada"})
+		return
+	}
+
+	if doacao.UsuarioID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para fazer essa solicitação"})
+		return
+	}
+
+	// o banco apaga em cascata imagens (fotos), histórico, solicitações e favoritos da doação
+	if err = repo_doacao.DoacaoRepo.Deletar(doacaoID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
 	c.Status(http.StatusNoContent)
-}
-
-// remove a doação junto com as solicitações, mensagens, favoritos e fotos vinculadas a ela
-func removerDoacaoEmCascata(doacao *models.Doacao) error {
-	solicitacoes, _ := repo_solicitacao.SolicitacaoRepo.BuscarPorDoacaoID(doacao.ID)
-	for _, s := range solicitacoes {
-		_ = repo_mensagem.MensagemRepo.DeletarPorSolicitacaoID(s.ID)
-		_ = repo_solicitacao.SolicitacaoRepo.Deletar(s.ID)
-	}
-
-	_ = repo_favorito.FavoritoRepo.RemoverPorDoacaoID(doacao.ID)
-
-	for _, foto := range doacao.Fotos {
-		removerArquivoDeFoto(foto)
-	}
-
-	return repo_doacao.DoacaoRepo.Deletar(doacao.ID)
 }

@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"seveste-api/src/seguranca"
 	"slices"
 	"strings"
@@ -19,10 +20,16 @@ type Usuario struct {
 	Email    string `json:"email" binding:"required,email"`
 	Senha    string `json:"-"`
 	Telefone string `json:"telefone"`
-	UF       string `json:"uf" binding:"required"`
-	Cidade   string `json:"cidade" binding:"required"`
 	Tipo     string `json:"tipo" binding:"required"`
 	Bio      string `json:"bio"`
+
+	// endereço completo (tabela Endereco). Apenas cidade e UF são públicos.
+	EnderecoID  uint64 `json:"-"`
+	Rua         string `json:"rua"`
+	Numero      string `json:"numero"`
+	Complemento string `json:"complemento"`
+	Cidade      string `json:"cidade" binding:"required"`
+	UF          string `json:"uf" binding:"required"`
 
 	RoupasProcuradas []string `json:"roupas_procuradas"`
 	TamanhoRoupa     string   `json:"tamanho_roupa"`
@@ -32,6 +39,7 @@ type Usuario struct {
 	ConsentimentoEm time.Time `json:"consentimento_em"`
 	VersaoPolitica  string    `json:"versao_politica"`
 	CriadoEm        time.Time `json:"criado_em"`
+	AtualizadoEm    time.Time `json:"atualizado_em"`
 }
 
 // UsuarioPublico contém apenas os dados que podem ser exibidos para outras pessoas.
@@ -49,6 +57,9 @@ type UsuarioPublico struct {
 type AtualizacaoUsuario struct {
 	Nome             *string   `json:"nome"`
 	Telefone         *string   `json:"telefone"`
+	Rua              *string   `json:"rua"`
+	Numero           *string   `json:"numero"`
+	Complemento      *string   `json:"complemento"`
 	UF               *string   `json:"uf"`
 	Cidade           *string   `json:"cidade"`
 	Bio              *string   `json:"bio"`
@@ -93,6 +104,9 @@ func (u *Usuario) formatar(etapa string) error {
 	u.Telefone = strings.TrimSpace(u.Telefone)
 	u.UF = strings.ToUpper(strings.TrimSpace(u.UF))
 	u.Cidade = strings.TrimSpace(u.Cidade)
+	u.Rua = strings.TrimSpace(u.Rua)
+	u.Numero = strings.TrimSpace(u.Numero)
+	u.Complemento = strings.TrimSpace(u.Complemento)
 	u.Tipo = strings.TrimSpace(u.Tipo)
 	u.Tipo = strings.ToLower(u.Tipo)
 	u.Bio = strings.TrimSpace(u.Bio)
@@ -117,8 +131,12 @@ func (u *Usuario) formatar(etapa string) error {
 
 // Valida se os campos obrigatórios estão preenchidos e se o tipo de usuário é um dos tipos aceitados
 func (u *Usuario) validar(etapa string) error {
-	if (u.Nome == "") || (u.UF == "") || (u.Cidade == "") || (u.Tipo == "") {
+	if (u.Nome == "") || (u.UF == "") || (u.Cidade == "") || (u.Tipo == "") || (u.Rua == "") || (u.Numero == "") {
 		return errors.New("todos os campos obrigatorios devem ser preenchidos")
+	}
+
+	if err := validarTamanhos(u); err != nil {
+		return err
 	}
 
 	if len(u.UF) != 2 {
@@ -199,6 +217,29 @@ func (u *Usuario) Mesclar(dados AtualizacaoUsuario) error {
 		alteracaoFeita = true
 	}
 
+	if dados.Rua != nil {
+		rua := strings.TrimSpace(*dados.Rua)
+		if rua == "" {
+			return errors.New("o campo 'rua' nao pode estar vazio")
+		}
+		u.Rua = rua
+		alteracaoFeita = true
+	}
+
+	if dados.Numero != nil {
+		numero := strings.TrimSpace(*dados.Numero)
+		if numero == "" {
+			return errors.New("o campo 'numero' nao pode estar vazio")
+		}
+		u.Numero = numero
+		alteracaoFeita = true
+	}
+
+	if dados.Complemento != nil {
+		u.Complemento = strings.TrimSpace(*dados.Complemento)
+		alteracaoFeita = true
+	}
+
 	if dados.Bio != nil {
 		bio := strings.TrimSpace(*dados.Bio)
 		if len(bio) > tamanhoMaximoBio {
@@ -243,6 +284,32 @@ func (u *Usuario) Mesclar(dados AtualizacaoUsuario) error {
 
 	if !alteracaoFeita {
 		return errors.New("nenhum dado fornecido para atualizacao")
+	}
+
+	return validarTamanhos(u)
+}
+
+// limites de tamanho das colunas no banco
+func validarTamanhos(u *Usuario) error {
+	limites := []struct {
+		valor  string
+		maximo int
+		campo  string
+	}{
+		{u.Nome, 100, "nome"},
+		{u.Email, 100, "email"},
+		{u.Telefone, 20, "telefone"},
+		{u.Cidade, 100, "cidade"},
+		{u.Rua, 500, "rua"},
+		{u.Numero, 20, "numero"},
+		{u.Complemento, 100, "complemento"},
+		{u.TamanhoRoupa, 10, "tamanho_roupa"},
+	}
+
+	for _, l := range limites {
+		if len([]rune(l.valor)) > l.maximo {
+			return fmt.Errorf("o campo '%s' deve ter no maximo %d caracteres", l.campo, l.maximo)
+		}
 	}
 
 	return nil

@@ -24,10 +24,7 @@ export default function CookiePolicy() {
             <p>Por ser estritamente necessário para o login, esse cookie não depende de consentimento separado. Sem ele não é possível acessar a sua conta.</p>
 
             <h2>Armazenamento local do navegador</h2>
-            <ul>
-                <li><strong>Mensagens lidas:</strong> guardamos no seu navegador até qual mensagem do chat você já leu, apenas para exibir o aviso de novas mensagens.</li>
-            </ul>
-            <p>Essas informações ficam somente no seu dispositivo e podem ser apagadas a qualquer momento limpando os dados do site no navegador.</p>
+            <p>Não guardamos dados pessoais no armazenamento local do seu navegador.</p>
         </>
     )
 }

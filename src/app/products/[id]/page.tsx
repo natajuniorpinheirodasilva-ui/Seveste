@@ -9,14 +9,13 @@ import DonationPhoto from "@/components/DonationPhoto"
 import Stars from "@/components/Stars"
 import { ErrorMessage, Loading } from "@/components/Feedback"
 import { api, ApiError, mensagemDeErro } from "@/lib/api"
-import { abrirChat } from "@/lib/chat"
-import { rotuloCategoria, rotuloCondicao, rotuloTamanho } from "@/lib/constants"
+import { rotuloCategoria, rotuloCondicao, rotuloEntrega, rotuloTamanho } from "@/lib/constants"
 import { anoDe, localizacao, tempoRelativo } from "@/lib/format"
 import type { Doacao, Estatisticas, Solicitacao } from "@/lib/types"
 import {
     ChevronRight,
     MapPin,
-    MessageCircle,
+    HandHeart,
     User,
     Clock,
     ShieldAlert,
@@ -29,7 +28,9 @@ import {
     Info,
     Edit3,
     SearchX,
-    CheckCircle2
+    CheckCircle2,
+    Truck,
+    Hourglass
 } from "lucide-react"
 
 export default function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -47,6 +48,8 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     const [solicitando, setSolicitando] = useState(false)
     const [erroAcao, setErroAcao] = useState<string | null>(null)
     const [linkCopiado, setLinkCopiado] = useState(false)
+    // solicitação ativa do acolhido logado para esta peça (se houver)
+    const [minhaSolicitacao, setMinhaSolicitacao] = useState<Solicitacao | null>(null)
 
     // recarrega quando o usuário loga/desloga, para atualizar o estado de favorito
     const usuarioId = usuario?.id_usuario
@@ -77,6 +80,20 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
 
         return () => controller.abort()
     }, [id, usuarioId])
+
+    const ehAcolhido = usuario?.tipo === "acolhido"
+    useEffect(() => {
+        if (!ehAcolhido) return
+        const controller = new AbortController()
+
+        api<{ solicitacoes: Solicitacao[] }>("/solicitacoes/minhas", { signal: controller.signal })
+            .then(({ solicitacoes }) => setMinhaSolicitacao(
+                solicitacoes.find((s) => s.id_doacao === Number(id) && s.status !== "RECUSADA") ?? null
+            ))
+            .catch(() => undefined)
+
+        return () => controller.abort()
+    }, [id, ehAcolhido])
 
     const exigirLogin = () => router.push(`/login?next=${encodeURIComponent(`/products/${id}`)}`)
 
@@ -115,13 +132,10 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
         try {
             const solicitacao = await api<Solicitacao>("/solicitacoes", {
                 method: "POST",
-                body: {
-                    id_doacao: doacao.id_doacao,
-                    mensagem: `Olá! Tenho interesse em "${doacao.titulo}".`,
-                },
+                body: { id_doacao: doacao.id_doacao },
             })
+            setMinhaSolicitacao(solicitacao)
             setDoacao({ ...doacao, total_solicitacoes: Math.max(doacao.total_solicitacoes, 1) })
-            abrirChat(solicitacao.id_solicitacao)
         } catch (e) {
             setErroAcao(mensagemDeErro(e))
         } finally {
@@ -168,9 +182,10 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
 
     const caracteristicas = [
         { icon: Tag, rotulo: "Tamanho", valor: rotuloTamanho(doacao.tamanho) },
-        { icon: Info, rotulo: "Condição", valor: rotuloCondicao(doacao.estado) },
+        { icon: Info, rotulo: "Condição", valor: rotuloCondicao(doacao.condicao) },
         { icon: Palette, rotulo: "Cor", valor: doacao.cor || "Não informada" },
         { icon: Layers, rotulo: "Material", valor: doacao.material || "Não informado" },
+        { icon: Truck, rotulo: "Entrega", valor: rotuloEntrega(doacao.tipo_de_entrega) },
     ]
 
     return (
@@ -322,6 +337,21 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                                         Ver solicitações recebidas
                                     </Link>
                                 </div>
+                            ) : minhaSolicitacao ? (
+                                <div className="flex flex-col gap-2 rounded-xl border border-seveste-green/30 bg-seveste-green/5 px-5 py-4 text-center">
+                                    <span className="flex items-center justify-center gap-2 font-semibold text-seveste-dark">
+                                        {minhaSolicitacao.status === "ACEITA" ? <CheckCircle2 className="h-5 w-5 text-seveste-green" /> : <Hourglass className="h-5 w-5 text-seveste-green" />}
+                                        {minhaSolicitacao.status === "ACEITA" ? "O doador aceitou sua solicitação!" : "Solicitação enviada"}
+                                    </span>
+                                    <span className="text-sm text-seveste-muted">
+                                        {minhaSolicitacao.status === "ACEITA"
+                                            ? "Veja o contato do doador em Minha Conta."
+                                            : "Você será avisado em Minha Conta quando o doador responder."}
+                                    </span>
+                                    <Link href="/dashboard?aba=solicitacoes" className="text-sm font-semibold text-seveste-green hover:text-seveste-dark">
+                                        Ver minhas solicitações
+                                    </Link>
+                                </div>
                             ) : !disponivel ? (
                                 <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-slate-100 px-6 py-4 font-semibold text-seveste-muted">
                                     <CheckCircle2 className="h-5 w-5" />
@@ -337,13 +367,13 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                                     disabled={solicitando}
                                     className="group flex w-full items-center justify-center gap-2 rounded-xl border border-seveste-dark bg-seveste-dark px-6 py-4 font-sans text-lg font-semibold tracking-wide text-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-seveste-green hover:bg-seveste-green hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-seveste-green focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
                                 >
-                                    <MessageCircle className="h-6 w-6 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12" />
-                                    {!usuario ? "Entrar para solicitar" : solicitando ? "Enviando..." : "Entrar em contato"}
+                                    <HandHeart className="h-6 w-6 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12" />
+                                    {!usuario ? "Entrar para solicitar" : solicitando ? "Enviando..." : "Solicitar doação"}
                                 </button>
                             )}
                             {erroAcao && <div className="mt-3"><ErrorMessage mensagem={erroAcao} /></div>}
                             <p className="mt-3 text-center text-xs text-seveste-muted flex items-center justify-center gap-1">
-                                <ShieldAlert className="h-3 w-3" /> Transação segura via chat da plataforma
+                                <ShieldAlert className="h-3 w-3" /> Seu contato só é compartilhado se o doador aceitar a solicitação
                             </p>
                         </div>
 
@@ -351,8 +381,8 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                         <div className="mb-8">
                             <h3 className="mb-4 text-lg font-bold text-seveste-dark">Características da peça</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                {caracteristicas.map(({ icon: Icon, rotulo, valor }) => (
-                                    <div key={rotulo} className="flex flex-col justify-center rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+                                {caracteristicas.map(({ icon: Icon, rotulo, valor }, index) => (
+                                    <div key={rotulo} className={`flex flex-col justify-center rounded-xl border border-gray-100 bg-white p-3 shadow-sm ${index === caracteristicas.length - 1 && caracteristicas.length % 2 === 1 ? "col-span-2" : ""}`}>
                                         <span className="mb-1 flex items-center gap-1.5 text-xs text-seveste-muted">
                                             <Icon className="h-3.5 w-3.5" /> {rotulo}
                                         </span>
@@ -378,7 +408,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                                 <ul className="text-sm leading-relaxed space-y-1 list-disc list-inside">
                                     <li>A Seveste nunca cobra taxas pelas doações.</li>
                                     <li>Não passe seus dados bancários ou senhas.</li>
-                                    <li>Combine a entrega em locais públicos e movimentados.</li>
+                                    <li>Se houver frete, combine com antecedência quem vai pagar o envio.</li>
                                 </ul>
                             </div>
                         </div>
@@ -414,7 +444,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                                         <h3 className="mb-1 text-base font-bold text-seveste-dark transition-colors duration-300 group-hover:text-seveste-green">
                                             {item.titulo}
                                         </h3>
-                                        <p className="text-sm text-seveste-muted">Tamanho {rotuloTamanho(item.tamanho)} • {rotuloCondicao(item.estado)}</p>
+                                        <p className="text-sm text-seveste-muted">Tamanho {rotuloTamanho(item.tamanho)} • {rotuloCondicao(item.condicao)}</p>
                                     </div>
                                 </Link>
                             ))}

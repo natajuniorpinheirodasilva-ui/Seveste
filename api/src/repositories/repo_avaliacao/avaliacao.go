@@ -12,7 +12,6 @@ type AvaliacaoRepositorio interface {
 	BuscarPorAvaliadoID(usuarioID uint64) ([]models.Avaliacao, error)
 	BuscarPorAutorID(usuarioID uint64) ([]models.Avaliacao, error)
 	BuscarPorSolicitacaoEAutor(solicitacaoID, autorID uint64) (*models.Avaliacao, error)
-	DeletarPorUsuarioID(usuarioID uint64) error
 }
 
 var AvaliacaoRepo AvaliacaoRepositorio

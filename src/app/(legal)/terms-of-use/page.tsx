@@ -27,7 +27,8 @@ export default function TermsOfUse() {
                 <li>As doações são sempre gratuitas. É proibido cobrar qualquer valor ou pedir algo em troca.</li>
                 <li>Anuncie apenas peças limpas, em condições de uso, e descreva defeitos com honestidade.</li>
                 <li>Não publique conteúdo ofensivo, ilegal ou que exponha dados pessoais de terceiros.</li>
-                <li>A entrega é combinada diretamente entre as pessoas. Prefira locais públicos e movimentados.</li>
+                <li>Cada anúncio informa como a peça será entregue: levada pelo doador ou enviada por frete. Quem paga o frete deve ser combinado entre as pessoas antes do envio.</li>
+                <li>Os dados de contato e o endereço recebidos após o aceite de uma solicitação só podem ser usados para combinar aquela doação.</li>
             </ul>
 
             <h2>3. Responsabilidades</h2>

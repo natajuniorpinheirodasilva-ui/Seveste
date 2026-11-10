@@ -70,7 +70,7 @@ export default function Products({
     const params = new URLSearchParams()
     if (categoria) params.set("categoria", categoria)
     if (buscaAplicada) params.set("busca", buscaAplicada)
-    if (filtros.condicoes.length) params.set("estado", filtros.condicoes.join(","))
+    if (filtros.condicoes.length) params.set("condicao", filtros.condicoes.join(","))
     if (filtros.tamanhos.length) params.set("tamanho", filtros.tamanhos.join(","))
     if (filtros.uf) params.set("uf", filtros.uf)
     if (filtros.cidade.trim()) params.set("cidade", filtros.cidade.trim())
@@ -202,7 +202,7 @@ export default function Products({
                                     <div className="mb-4 flex flex-col gap-2">
                                         <div className="flex items-center gap-2 text-sm text-seveste-muted">
                                             <Tag className="h-4 w-4 shrink-0" />
-                                            <span>{rotuloTamanho(doacao.tamanho)} / {rotuloCondicao(doacao.estado)}</span>
+                                            <span>{rotuloTamanho(doacao.tamanho)} / {rotuloCondicao(doacao.condicao)}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-sm text-seveste-muted">
                                             <MapPin className="h-4 w-4 shrink-0" />

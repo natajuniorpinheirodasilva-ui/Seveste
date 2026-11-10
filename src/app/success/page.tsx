@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRequireAuth } from "@/components/AuthProvider"
+import ContactCard from "@/components/ContactCard"
 import { ErrorMessage, Loading } from "@/components/Feedback"
 import { api, mensagemDeErro } from "@/lib/api"
 import type { Solicitacao } from "@/lib/types"
@@ -132,6 +133,15 @@ export default function SuccessPage({
                     </p>
                 </div>
 
+                {/* Próximo passo: contato da outra parte para combinar a entrega */}
+                {solicitacao.contato && (
+                    <div className="border-b border-gray-100 px-8 pt-8 md:px-10">
+                        <h2 className="mb-3 text-lg font-bold text-seveste-dark">Próximo passo: combinar a entrega</h2>
+                        <ContactCard contato={solicitacao.contato} tipoEntrega={solicitacao.doacao?.tipo_de_entrega} souDoador={souDoador} />
+                        <p className="mb-8 mt-3 text-xs text-seveste-muted">Esses dados também ficam disponíveis em Minha Conta → Solicitações.</p>
+                    </div>
+                )}
+
                 {/* Formulário de Avaliação */}
                 <div className="p-8 md:p-10">
                     {!concluida ? (
@@ -145,6 +155,7 @@ export default function SuccessPage({
                         </div>
                     ) : (
                         <>
+                            <p className="mb-2 text-center text-sm text-seveste-muted">Depois que a entrega acontecer, avalie a experiência:</p>
                             <h2 className="mb-6 text-center text-lg font-bold text-seveste-dark">
                                 Como foi sua experiência com {outraParte?.nome ?? "a outra pessoa"}?
                             </h2>
@@ -202,7 +213,7 @@ export default function SuccessPage({
                                 </button>
 
                                 <Link href="/dashboard" className="mt-4 text-sm font-medium text-seveste-muted hover:text-seveste-dark underline-offset-4 hover:underline">
-                                    Pular esta etapa
+                                    Avaliar depois
                                 </Link>
                             </form>
                         </>

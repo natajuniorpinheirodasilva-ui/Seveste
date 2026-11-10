@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -16,17 +17,20 @@ const (
 
 var (
 	CategoriasPermitidas = []string{"roupas", "agasalhos", "calcados", "acessorios", "infantil"}
-	EstadosPermitidos    = []string{"novo", "usado_excelente", "usado_marcas"}
+	CondicoesPermitidas  = []string{"novo", "usado_excelente", "usado_marcas"}
+	// "levar": o doador leva até o acolhido; "frete": a peça é enviada por frete
+	TiposDeEntregaPermitidos = []string{"levar", "frete"}
 )
 
 type Doacao struct {
-	ID        uint64 `json:"id_doacao"`
-	Titulo    string `json:"titulo" binding:"required"`
-	Descricao string `json:"descricao" binding:"required"`
-	Categoria string `json:"categoria" binding:"required"`
-	Tamanho   string `json:"tamanho" binding:"required"`
-	Estado    string `json:"estado" binding:"required"`
-	Status    string `json:"status" binding:"required"`
+	ID            uint64 `json:"id_doacao"`
+	Titulo        string `json:"titulo" binding:"required"`
+	Descricao     string `json:"descricao" binding:"required"`
+	Categoria     string `json:"categoria" binding:"required"`
+	Tamanho       string `json:"tamanho" binding:"required"`
+	Condicao      string `json:"condicao" binding:"required"`
+	TipoDeEntrega string `json:"tipo_de_entrega" binding:"required"`
+	Status        string `json:"status" binding:"required"`
 
 	// campos opcionais
 	Cor      string `json:"cor"`
@@ -34,27 +38,34 @@ type Doacao struct {
 	// bairro ou região aproximada - nunca o endereço completo
 	Local string `json:"local"`
 
-	// copiados do doador no momento da criação para permitir filtros por região
-	Cidade string `json:"cidade"`
-	UF     string `json:"uf"`
+	// endereço do doador (tabela Endereco); só cidade e UF são expostos
+	EnderecoID uint64 `json:"-"`
+	Cidade     string `json:"cidade"`
+	UF         string `json:"uf"`
 
-	// nomes dos arquivos salvos na pasta de uploads
+	// nomes dos arquivos salvos na pasta de uploads (tabela DoacaoImagem, a primeira é a capa)
 	Fotos []string `json:"fotos"`
 
-	CriadoEm time.Time `json:"criado_em"`
+	CriadoEm     time.Time `json:"criado_em"`
+	AtualizadoEm time.Time `json:"atualizado_em"`
 
 	UsuarioID uint64 `json:"usuario_id" binding:"required"`
+
+	// preenchidos pelo repositório na mesma consulta da doação (evita uma consulta extra por anúncio)
+	Doador            *UsuarioPublico `json:"doador"`
+	TotalSolicitacoes int             `json:"total_solicitacoes"`
 }
 
 type AtualizacaoDoacao struct {
-	Titulo    *string `json:"titulo"`
-	Descricao *string `json:"descricao"`
-	Categoria *string `json:"categoria"`
-	Tamanho   *string `json:"tamanho"`
-	Estado    *string `json:"estado"`
-	Cor       *string `json:"cor"`
-	Material  *string `json:"material"`
-	Local     *string `json:"local"`
+	Titulo        *string `json:"titulo"`
+	Descricao     *string `json:"descricao"`
+	Categoria     *string `json:"categoria"`
+	Tamanho       *string `json:"tamanho"`
+	Condicao      *string `json:"condicao"`
+	TipoDeEntrega *string `json:"tipo_de_entrega"`
+	Cor           *string `json:"cor"`
+	Material      *string `json:"material"`
+	Local         *string `json:"local"`
 }
 
 func (d *Doacao) Preparar() error {
@@ -73,41 +84,49 @@ func (d *Doacao) formatar() {
 	d.Descricao = strings.TrimSpace(d.Descricao)
 	d.Categoria = strings.ToLower(strings.TrimSpace(d.Categoria))
 	d.Tamanho = strings.ToUpper(strings.TrimSpace(d.Tamanho))
-	d.Estado = strings.ToLower(strings.TrimSpace(d.Estado))
+	d.Condicao = strings.ToLower(strings.TrimSpace(d.Condicao))
+	d.TipoDeEntrega = strings.ToLower(strings.TrimSpace(d.TipoDeEntrega))
 	d.Status = strings.TrimSpace(d.Status)
 	d.Cor = strings.TrimSpace(d.Cor)
 	d.Material = strings.TrimSpace(d.Material)
 	d.Local = strings.TrimSpace(d.Local)
 }
 
-// valida se campos obrigatórios estão preenchidos
+// valida se campos obrigatórios estão preenchidos e respeitam os limites das colunas do banco
 func (d *Doacao) validar() error {
-	if (d.Titulo == "") || (d.Descricao == "") || (d.Categoria == "") || (d.Tamanho == "") || (d.Estado == "") || (d.Status == "") {
+	if (d.Titulo == "") || (d.Descricao == "") || (d.Categoria == "") || (d.Tamanho == "") ||
+		(d.Condicao == "") || (d.TipoDeEntrega == "") || (d.Status == "") {
 		return errors.New("todos os campos sao obrigatorios e devem ser preenchidos")
 	}
 
-	if len(d.Titulo) > 80 {
-		return errors.New("o titulo deve ter no maximo 80 caracteres")
+	limites := []struct {
+		valor  string
+		maximo int
+		campo  string
+	}{
+		{d.Titulo, 80, "titulo"},
+		{d.Descricao, 300, "descricao"},
+		{d.Tamanho, 10, "tamanho"},
+		{d.Cor, 40, "cor"},
+		{d.Material, 40, "material"},
+		{d.Local, 80, "local"},
 	}
-
-	if len(d.Descricao) > 1000 {
-		return errors.New("a descricao deve ter no maximo 1000 caracteres")
-	}
-
-	if len(d.Tamanho) > 10 {
-		return errors.New("o tamanho deve ter no maximo 10 caracteres")
-	}
-
-	if len(d.Cor) > 40 || len(d.Material) > 40 || len(d.Local) > 80 {
-		return errors.New("cor, material ou local excedem o tamanho permitido")
+	for _, l := range limites {
+		if len([]rune(l.valor)) > l.maximo {
+			return fmt.Errorf("o campo '%s' deve ter no maximo %d caracteres", l.campo, l.maximo)
+		}
 	}
 
 	if !slices.Contains(CategoriasPermitidas, d.Categoria) {
 		return errors.New("categoria invalida")
 	}
 
-	if !slices.Contains(EstadosPermitidos, d.Estado) {
-		return errors.New("estado de conservacao invalido")
+	if !slices.Contains(CondicoesPermitidas, d.Condicao) {
+		return errors.New("condicao da peca invalida")
+	}
+
+	if !slices.Contains(TiposDeEntregaPermitidos, d.TipoDeEntrega) {
+		return errors.New(`tipo de entrega invalido, permitidos: ["levar", "frete"]`)
 	}
 
 	return nil
@@ -125,7 +144,8 @@ func (d *Doacao) Mesclar(dados AtualizacaoDoacao) error {
 		{dados.Descricao, &d.Descricao},
 		{dados.Categoria, &d.Categoria},
 		{dados.Tamanho, &d.Tamanho},
-		{dados.Estado, &d.Estado},
+		{dados.Condicao, &d.Condicao},
+		{dados.TipoDeEntrega, &d.TipoDeEntrega},
 		{dados.Cor, &d.Cor},
 		{dados.Material, &d.Material},
 		{dados.Local, &d.Local},

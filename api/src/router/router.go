@@ -17,8 +17,8 @@ func Configurar() *gin.Engine {
 	{
 		v1.GET("/saude", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 
-		// fotos das doações
-		v1.Static("/uploads", controllers.PastaUploads)
+		// fotos das doações (guardadas no banco)
+		v1.GET("/uploads/:nome", controllers.ServirFoto)
 
 		registrarRotasDeUsuario(v1)
 		registrarRotasDeLogin(v1)
@@ -90,9 +90,6 @@ func registrarRotasDeSolicitacao(rg *gin.RouterGroup) {
 		solicitacoes.POST("", controllers.CriarSolicitacao)
 		solicitacoes.PATCH("/:id", controllers.ResponderSolicitacao)
 		solicitacoes.DELETE("/:id", controllers.DeletarSolicitacao)
-
-		solicitacoes.GET("/:id/mensagens", controllers.BuscarMensagens)
-		solicitacoes.POST("/:id/mensagens", controllers.EnviarMensagem)
 	}
 }
 

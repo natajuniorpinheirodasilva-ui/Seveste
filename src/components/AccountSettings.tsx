@@ -35,6 +35,9 @@ export default function AccountSettings({ usuario }: { usuario: Usuario }) {
         const corpo: Record<string, unknown> = {
             nome: dados.get("nome"),
             telefone: dados.get("telefone"),
+            rua: dados.get("rua"),
+            numero: dados.get("numero"),
+            complemento: dados.get("complemento"),
             cidade: dados.get("cidade"),
             uf: dados.get("uf"),
             bio: dados.get("bio"),
@@ -123,6 +126,18 @@ export default function AccountSettings({ usuario }: { usuario: Usuario }) {
                         <label htmlFor="telefone" className={labelClass}>Telefone (opcional)</label>
                         <input id="telefone" name="telefone" type="tel" defaultValue={usuario.telefone} className={inputClass} />
                     </div>
+                    <div className="md:col-span-2">
+                        <label htmlFor="rua" className={labelClass}>Rua</label>
+                        <input id="rua" name="rua" defaultValue={usuario.rua} maxLength={500} required autoComplete="address-line1" className={inputClass} />
+                    </div>
+                    <div>
+                        <label htmlFor="numero" className={labelClass}>Número</label>
+                        <input id="numero" name="numero" defaultValue={usuario.numero} maxLength={20} required className={inputClass} />
+                    </div>
+                    <div>
+                        <label htmlFor="complemento" className={labelClass}>Complemento (opcional)</label>
+                        <input id="complemento" name="complemento" defaultValue={usuario.complemento} maxLength={100} autoComplete="address-line2" className={inputClass} />
+                    </div>
                     <div>
                         <label htmlFor="cidade" className={labelClass}>Cidade</label>
                         <input id="cidade" name="cidade" defaultValue={usuario.cidade} required className={inputClass} />
@@ -201,7 +216,8 @@ export default function AccountSettings({ usuario }: { usuario: Usuario }) {
                         <Link href="/privacy-policy" className="underline hover:text-seveste-accent">política de privacidade</Link>
                         {usuario.consentimento_em && <> em {dataCurta(usuario.consentimento_em)}</>}
                         {usuario.versao_politica && <> (versão {usuario.versao_politica})</>}.
-                        Seu e-mail e telefone nunca são exibidos publicamente.
+                        Seu e-mail, telefone e endereço nunca são exibidos publicamente: eles só são compartilhados com a outra
+                        pessoa de uma doação depois que o doador aceita a solicitação.
                     </p>
                     <button
                         type="button"
@@ -220,7 +236,7 @@ export default function AccountSettings({ usuario }: { usuario: Usuario }) {
                         Excluir minha conta
                     </h3>
                     <p className="mb-4 text-sm leading-relaxed text-seveste-muted">
-                        Remove definitivamente sua conta, anúncios, fotos, solicitações, mensagens e avaliações. Essa ação não pode ser desfeita.
+                        Remove definitivamente sua conta, endereço, anúncios, fotos, solicitações e avaliações. Essa ação não pode ser desfeita.
                     </p>
                     <label htmlFor="confirmar-exclusao" className="mb-1.5 block text-xs font-medium text-seveste-dark">
                         Digite <strong>EXCLUIR</strong> para confirmar

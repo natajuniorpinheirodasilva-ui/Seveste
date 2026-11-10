@@ -11,7 +11,7 @@ import {
     Snowflake,
     Briefcase,
     Baby,
-    MessageCircle,
+    Lock,
     ShieldCheck
 } from "lucide-react"
 
@@ -108,7 +108,7 @@ export default function Home() {
                             </div>
                             <h4 className="mb-3 text-xl font-bold">3. Conexão direta</h4>
                             <p className="text-sm leading-relaxed text-seveste-muted">
-                                Utilize a plataforma para combinar a entrega diretamente com a outra pessoa, de forma segura e prática.
+                                Quando o doador aceita uma solicitação, os dois recebem o contato um do outro para combinar a entrega ou o frete.
                             </p>
                         </div>
                     </div>
@@ -145,7 +145,7 @@ export default function Home() {
                         <div className="max-w-xl text-center md:text-left">
                             <h3 className="mb-4 text-3xl font-bold lg:text-4xl">Dúvidas sobre o processo?</h3>
                             <p className="text-seveste-surface">
-                                Nossa plataforma foi desenhada para garantir segurança e transparência. A comunicação é feita internamente e você decide como e onde realizar a entrega.
+                                Nossa plataforma foi desenhada para garantir segurança e transparência. Seus dados de contato e endereço só são compartilhados com a outra pessoa depois que a doação é aceita.
                             </p>
                         </div>
                         <div className="flex flex-col gap-4 w-full md:w-auto">
@@ -154,8 +154,8 @@ export default function Home() {
                                 <span className="font-medium">Ambiente verificado</span>
                             </div>
                             <div className="group flex items-center gap-4 rounded-lg bg-white/5 p-4 transition-colors duration-300 hover:bg-white/10">
-                                <MessageCircle className="h-6 w-6 text-seveste-accent" />
-                                <span className="font-medium">Chat integrado seguro</span>
+                                <Lock className="h-6 w-6 text-seveste-accent" />
+                                <span className="font-medium">Contato liberado só após o aceite</span>
                             </div>
                         </div>
                     </div>

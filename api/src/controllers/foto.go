@@ -4,39 +4,40 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"seveste-api/src/models"
 	"seveste-api/src/repositories/repo_doacao"
 	"slices"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-const tamanhoMaximoFoto = 5 << 20 // 5 MB
+// As fotos ficam no banco (tabela DoacaoImagem), porque a Vercel não tem disco permanente.
+// O front-end reduz cada foto antes do envio (máx. 1280px, ~100-300 KB); o limite aqui é uma proteção.
+// Cada requisição na Vercel aceita no máximo 4,5 MB, então o front envia uma foto por vez.
+const tamanhoMaximoFoto = 1 << 20 // 1 MB
 
-// pasta onde as fotos das doações são armazenadas (configurável pela variável UPLOAD_DIR)
-var PastaUploads = pastaUploads()
+var tiposPermitidos = []string{"image/jpeg", "image/png", "image/webp"}
 
-func pastaUploads() string {
-	if pasta := os.Getenv("UPLOAD_DIR"); pasta != "" {
-		return pasta
-	}
-	return "uploads"
-}
-
-var extensoesPorTipo = map[string]string{
-	"image/jpeg": ".jpg",
-	"image/png":  ".png",
-	"image/webp": ".webp",
-}
-
-// AdicionarFotos recebe até 4 imagens (campo multipart "fotos") para uma doação do usuário logado
+// AdicionarFotos recebe imagens (campo multipart "fotos") para uma doação do usuário logado
 func AdicionarFotos(c *gin.Context) {
-	doacao, ok := buscarDoacaoDoUsuario(c)
-	if !ok {
+	var stringID = c.Param("id")
+	doacaoID, err := strconv.ParseUint(stringID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if doacao.UsuarioID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para alterar essa doação"})
 		return
 	}
 
@@ -57,65 +58,64 @@ func AdicionarFotos(c *gin.Context) {
 		return
 	}
 
-	if err = os.MkdirAll(PastaUploads, 0o755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"erro": "nao foi possivel salvar as fotos"})
-		return
-	}
-
-	salvas := []string{}
 	for _, arquivo := range arquivos {
 		if arquivo.Size > tamanhoMaximoFoto {
-			desfazerFotos(salvas)
-			c.JSON(http.StatusBadRequest, gin.H{"erro": "cada foto deve ter no maximo 5MB"})
+			c.JSON(http.StatusBadRequest, gin.H{"erro": "cada foto deve ter no maximo 1MB"})
 			return
 		}
 
 		aberto, err := arquivo.Open()
 		if err != nil {
-			desfazerFotos(salvas)
 			c.JSON(http.StatusBadRequest, gin.H{"erro": "nao foi possivel ler a foto enviada"})
 			return
 		}
 
 		conteudo, err := io.ReadAll(io.LimitReader(aberto, tamanhoMaximoFoto+1))
 		aberto.Close()
-		if err != nil {
-			desfazerFotos(salvas)
+		if err != nil || len(conteudo) > tamanhoMaximoFoto {
 			c.JSON(http.StatusBadRequest, gin.H{"erro": "nao foi possivel ler a foto enviada"})
 			return
 		}
 
 		// o tipo é detectado pelo conteúdo do arquivo, e não pela extensão informada pelo cliente
-		extensao, permitido := extensoesPorTipo[http.DetectContentType(conteudo)]
-		if !permitido {
-			desfazerFotos(salvas)
+		tipoConteudo := http.DetectContentType(conteudo)
+		if !slices.Contains(tiposPermitidos, tipoConteudo) {
 			c.JSON(http.StatusBadRequest, gin.H{"erro": "formato de imagem invalido, use JPG, PNG ou WEBP"})
 			return
 		}
 
-		nome := nomeAleatorio() + extensao
-		if err = os.WriteFile(filepath.Join(PastaUploads, nome), conteudo, 0o644); err != nil {
-			desfazerFotos(salvas)
-			c.JSON(http.StatusInternalServerError, gin.H{"erro": "nao foi possivel salvar as fotos"})
+		if err = repo_doacao.DoacaoRepo.AdicionarFoto(doacaoID, nomeAleatorio(), tipoConteudo, conteudo); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": "nao foi possivel salvar a foto"})
 			return
 		}
-		salvas = append(salvas, nome)
 	}
 
-	doacao.Fotos = append(slices.Clone(doacao.Fotos), salvas...)
-	atualizada, err := repo_doacao.DoacaoRepo.Salvar(doacao.ID, doacao)
+	atualizada, err := repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
 	if err != nil {
-		desfazerFotos(salvas)
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, montarRespostaDoacao(*atualizada, doacao.UsuarioID))
+	c.JSON(http.StatusOK, montarRespostaDoacao(*atualizada, tokenID))
 }
 
 func RemoverFoto(c *gin.Context) {
-	doacao, ok := buscarDoacaoDoUsuario(c)
-	if !ok {
+	var stringID = c.Param("id")
+	doacaoID, err := strconv.ParseUint(stringID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	doacao, err := repo_doacao.DoacaoRepo.BuscarPorID(doacaoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+		return
+	}
+
+	var tokenID = c.GetUint64("usuario_id")
+	if doacao.UsuarioID != tokenID {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "você não tem permissão para alterar essa doação"})
 		return
 	}
 
@@ -126,31 +126,32 @@ func RemoverFoto(c *gin.Context) {
 		return
 	}
 
+	// salvar a doação sem a foto apaga a imagem do banco e reorganiza as posições (a próxima vira capa)
 	doacao.Fotos = slices.Delete(slices.Clone(doacao.Fotos), indice, indice+1)
-	if _, err := repo_doacao.DoacaoRepo.Salvar(doacao.ID, doacao); err != nil {
+	if _, err = repo_doacao.DoacaoRepo.Salvar(doacao.ID, doacao); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
 
-	removerArquivoDeFoto(nome)
 	c.Status(http.StatusNoContent)
+}
+
+// ServirFoto entrega a imagem guardada no banco. Como o nome de cada foto é único e a foto nunca muda,
+// a resposta pode ficar em cache: a CDN da Vercel responde as próximas visitas sem consultar o banco.
+func ServirFoto(c *gin.Context) {
+	tipoConteudo, dados, err := repo_doacao.DoacaoRepo.BuscarFoto(c.Param("nome"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "foto nao encontrada"})
+		return
+	}
+
+	// um dia de cache: uma foto removida deixa de aparecer em até 24 horas
+	c.Header("Cache-Control", "public, max-age=86400, s-maxage=86400")
+	c.Data(http.StatusOK, tipoConteudo, dados)
 }
 
 func nomeAleatorio() string {
 	bytes := make([]byte, 16)
 	_, _ = rand.Read(bytes)
 	return hex.EncodeToString(bytes)
-}
-
-func removerArquivoDeFoto(nome string) {
-	// filepath.Base impede que um nome manipulado aponte para fora da pasta de uploads
-	if err := os.Remove(filepath.Join(PastaUploads, filepath.Base(nome))); err != nil && !os.IsNotExist(err) {
-		log.Printf("aviso: nao foi possivel remover a foto %s: %v", nome, err)
-	}
-}
-
-func desfazerFotos(nomes []string) {
-	for _, nome := range nomes {
-		removerArquivoDeFoto(nome)
-	}
 }

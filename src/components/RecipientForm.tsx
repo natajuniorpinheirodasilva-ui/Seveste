@@ -48,7 +48,7 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                         Cadastro de acolhido
                     </h1>
                     <p className="mt-2 text-base text-seveste-muted">
-                        Informe somente o necessário para encontrarmos doações compatíveis com você.
+                        Informe somente o necessário. Seu endereço só é compartilhado com o doador que aceitar sua solicitação, para a entrega.
                     </p>
                 </div>
             </div>
@@ -81,12 +81,40 @@ export default function RecipientForm({ onBack }: RecipientFormProps) {
                     minLength={8}
                     required
                 />
+                <div className="sm:col-span-2">
+                    <Input
+                        label="Rua *"
+                        name="street"
+                        type="text"
+                        autoComplete="address-line1"
+                        placeholder="Rua, avenida..."
+                        maxLength={500}
+                        required
+                    />
+                </div>
+                <Input
+                    label="Número *"
+                    name="number"
+                    type="text"
+                    placeholder="Ex.: 120"
+                    maxLength={20}
+                    required
+                />
+                <Input
+                    label="Complemento (opcional)"
+                    name="complement"
+                    type="text"
+                    autoComplete="address-line2"
+                    placeholder="Apto, bloco, casa..."
+                    maxLength={100}
+                />
                 <Input
                     label="Cidade *"
                     name="city"
                     type="text"
                     autoComplete="address-level2"
                     placeholder="Sua cidade"
+                    maxLength={100}
                     required
                 />
                 <Input

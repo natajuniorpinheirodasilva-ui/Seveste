@@ -7,26 +7,31 @@ import (
 	"seveste-api/src/repositories/repo_avaliacao"
 	"seveste-api/src/repositories/repo_doacao"
 	"seveste-api/src/repositories/repo_favorito"
-	"seveste-api/src/repositories/repo_mensagem"
 	"seveste-api/src/repositories/repo_solicitacao"
 	"seveste-api/src/repositories/repo_usuario"
 	"seveste-api/src/seguranca"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 // versão da política de privacidade aceita no cadastro (atualize junto com a página /privacy-policy)
-const VersaoPoliticaPrivacidade = "2026-11"
+const VersaoPoliticaPrivacidade = "2026-11.2"
 
 type usuarioInput struct {
 	Nome     string `json:"nome" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Senha    string `json:"senha" binding:"required,min=8,max=72"`
 	Telefone string `json:"telefone"`
-	UF       string `json:"uf" binding:"required"`
-	Cidade   string `json:"cidade" binding:"required"`
 	Tipo     string `json:"tipo" binding:"required"`
+
+	// endereço completo (obrigatório)
+	Rua         string `json:"rua" binding:"required"`
+	Numero      string `json:"numero" binding:"required"`
+	Complemento string `json:"complemento"`
+	Cidade      string `json:"cidade" binding:"required"`
+	UF          string `json:"uf" binding:"required"`
 
 	RoupasProcuradas []string `json:"roupas_procuradas"`
 	TamanhoRoupa     string   `json:"tamanho_roupa"`
@@ -46,12 +51,9 @@ type estatisticasUsuario struct {
 func calcularEstatisticas(usuarioID uint64) estatisticasUsuario {
 	var estatisticas estatisticasUsuario
 
-	if doacoes, err := repo_doacao.DoacaoRepo.BuscarTodas(); err == nil {
-		for _, d := range doacoes {
-			if d.UsuarioID == usuarioID && d.Status == models.StatusDoacaoDoada {
-				estatisticas.DoacoesRealizadas++
-			}
-		}
+	doadas, err := repo_doacao.DoacaoRepo.Buscar(repo_doacao.FiltroDoacao{UsuarioID: usuarioID, Status: models.StatusDoacaoDoada})
+	if err == nil {
+		estatisticas.DoacoesRealizadas = len(doadas)
 	}
 
 	if solicitacoes, err := repo_solicitacao.SolicitacaoRepo.BuscarPorUsuarioID(usuarioID); err == nil {
@@ -87,8 +89,10 @@ func GetUsuarios(c *gin.Context) {
 
 // perfil público de um usuário
 func GetUsuario(c *gin.Context) {
-	usuarioID, ok := lerID(c, "id")
-	if !ok {
+	var ID string = c.Param("id")
+	var usuarioID, err = strconv.ParseUint(ID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
@@ -119,7 +123,7 @@ func CriarUsuario(c *gin.Context) {
 	var input usuarioInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "dados invalidos: verifique os campos obrigatorios e se a senha tem ao menos 8 caracteres"})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "dados invalidos: verifique os campos obrigatorios (incluindo o endereco completo) e se a senha tem ao menos 8 caracteres"})
 		return
 	}
 
@@ -134,6 +138,9 @@ func CriarUsuario(c *gin.Context) {
 		Email:            input.Email,
 		Senha:            input.Senha,
 		Telefone:         input.Telefone,
+		Rua:              input.Rua,
+		Numero:           input.Numero,
+		Complemento:      input.Complemento,
 		UF:               input.UF,
 		Cidade:           input.Cidade,
 		Tipo:             input.Tipo,
@@ -197,27 +204,10 @@ func AtualizarUsuario(c *gin.Context) {
 	c.JSON(http.StatusOK, atualizado)
 }
 
-// DeletarUsuario atende ao direito de eliminação da LGPD: remove a conta e todos os dados vinculados a ela
+// DeletarUsuario atende ao direito de eliminação da LGPD: remove a conta e todos os dados vinculados a ela.
+// O banco apaga em cascata doações, fotos, solicitações, avaliações e favoritos; o repositório apaga o endereço.
 func DeletarUsuario(c *gin.Context) {
 	var targetID uint64 = c.GetUint64("target_usuario_id")
-
-	if doacoes, err := repo_doacao.DoacaoRepo.BuscarTodas(); err == nil {
-		for _, d := range doacoes {
-			if d.UsuarioID == targetID {
-				_ = removerDoacaoEmCascata(&d)
-			}
-		}
-	}
-
-	if solicitacoes, err := repo_solicitacao.SolicitacaoRepo.BuscarPorUsuarioID(targetID); err == nil {
-		for _, s := range solicitacoes {
-			_ = repo_mensagem.MensagemRepo.DeletarPorSolicitacaoID(s.ID)
-			_ = repo_solicitacao.SolicitacaoRepo.Deletar(s.ID)
-		}
-	}
-
-	_ = repo_favorito.FavoritoRepo.RemoverPorUsuarioID(targetID)
-	_ = repo_avaliacao.AvaliacaoRepo.DeletarPorUsuarioID(targetID)
 
 	if err := repo_usuario.UsuarioRepo.Deletar(targetID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
@@ -239,17 +229,8 @@ func ExportarDados(c *gin.Context) {
 		return
 	}
 
-	doacoes := []models.Doacao{}
-	if todas, err := repo_doacao.DoacaoRepo.BuscarTodas(); err == nil {
-		for _, d := range todas {
-			if d.UsuarioID == tokenID {
-				doacoes = append(doacoes, d)
-			}
-		}
-	}
-
+	doacoes, _ := repo_doacao.DoacaoRepo.Buscar(repo_doacao.FiltroDoacao{UsuarioID: tokenID})
 	solicitacoes, _ := repo_solicitacao.SolicitacaoRepo.BuscarPorUsuarioID(tokenID)
-	mensagens, _ := repo_mensagem.MensagemRepo.BuscarPorUsuarioID(tokenID)
 	favoritos, _ := repo_favorito.FavoritoRepo.BuscarPorUsuarioID(tokenID)
 	avaliacoesFeitas, _ := repo_avaliacao.AvaliacaoRepo.BuscarPorAutorID(tokenID)
 	avaliacoesRecebidas, _ := repo_avaliacao.AvaliacaoRepo.BuscarPorAvaliadoID(tokenID)
@@ -260,7 +241,6 @@ func ExportarDados(c *gin.Context) {
 		"usuario":              usuario,
 		"doacoes":              doacoes,
 		"solicitacoes":         solicitacoes,
-		"mensagens_enviadas":   mensagens,
 		"favoritos":            favoritos,
 		"avaliacoes_feitas":    avaliacoesFeitas,
 		"avaliacoes_recebidas": avaliacoesRecebidas,

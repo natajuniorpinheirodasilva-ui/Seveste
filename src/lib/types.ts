@@ -15,6 +15,9 @@ export type UsuarioPublico = {
 export type Usuario = UsuarioPublico & {
     email: string
     telefone: string
+    rua: string
+    numero: string
+    complemento: string
     roupas_procuradas: string[] | null
     tamanho_roupa: string
     tamanho_calcado: number
@@ -31,13 +34,17 @@ export type Estatisticas = {
 
 export type StatusDoacao = "disponivel" | "doada"
 
+// "levar": o doador leva até o acolhido; "frete": a peça é enviada por frete
+export type TipoEntrega = "levar" | "frete"
+
 export type Doacao = {
     id_doacao: number
     titulo: string
     descricao: string
     categoria: string
     tamanho: string
-    estado: string
+    condicao: string
+    tipo_de_entrega: TipoEntrega
     status: StatusDoacao
     cor: string
     material: string
@@ -52,12 +59,17 @@ export type Doacao = {
     favoritada: boolean
 }
 
-export type Mensagem = {
-    id_mensagem: number
-    id_solicitacao: number
-    id_usuario: number
-    texto: string
-    enviada_em: string
+// Dados de contato da outra parte, liberados só depois que a solicitação é aceita.
+// O endereço completo (rua, número...) só vem para o doador.
+export type Contato = {
+    nome: string
+    email: string
+    telefone: string
+    rua?: string
+    numero?: string
+    complemento?: string
+    cidade: string
+    uf: string
 }
 
 export type StatusSolicitacao = "PENDENTE" | "ACEITA" | "RECUSADA"
@@ -72,12 +84,13 @@ export type Solicitacao = {
         id_doacao: number
         titulo: string
         status: StatusDoacao
+        tipo_de_entrega: TipoEntrega
         fotos: string[]
         usuario_id: number
     } | null
     solicitante: UsuarioPublico | null
     doador: UsuarioPublico | null
-    ultima_mensagem: Mensagem | null
+    contato: Contato | null
     avaliada_por_mim: boolean
 }
 

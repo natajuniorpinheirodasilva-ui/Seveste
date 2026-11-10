@@ -7,6 +7,7 @@ import (
 	"seveste-api/src/repositories/repo_avaliacao"
 	"seveste-api/src/repositories/repo_doacao"
 	"seveste-api/src/repositories/repo_solicitacao"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -89,8 +90,10 @@ func CriarAvaliacao(c *gin.Context) {
 
 // avaliações recebidas por um usuário, com a média das notas
 func BuscarAvaliacoesDoUsuario(c *gin.Context) {
-	usuarioID, ok := lerID(c, "id")
-	if !ok {
+	var ID string = c.Param("id")
+	var usuarioID, err = strconv.ParseUint(ID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
@@ -100,9 +103,11 @@ func BuscarAvaliacoesDoUsuario(c *gin.Context) {
 		return
 	}
 
+	// cada autor é buscado uma única vez, mesmo que tenha feito várias avaliações
+	cache := novoCache()
 	respostas := make([]respostaAvaliacao, 0, len(avaliacoes))
 	for _, a := range avaliacoes {
-		respostas = append(respostas, respostaAvaliacao{Avaliacao: a, Autor: usuarioPublico(a.AutorID)})
+		respostas = append(respostas, respostaAvaliacao{Avaliacao: a, Autor: cache.usuarioPublico(a.AutorID)})
 	}
 
 	media, total := mediaDeAvaliacoes(avaliacoes)

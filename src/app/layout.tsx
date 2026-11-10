@@ -1,5 +1,4 @@
 import AuthProvider from "@/components/AuthProvider";
-import ChatBubble from "@/components/ChatBubble";
 import DebugNavigator from "@/components/DebugNavigator";
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Geist, Geist_Mono } from "next/font/google";
@@ -39,7 +38,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AuthProvider>
           {children}
           <DebugNavigator />
-          <ChatBubble />
         </AuthProvider>
       </body>
     </html>

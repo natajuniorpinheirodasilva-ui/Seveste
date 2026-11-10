@@ -1,9 +1,9 @@
 # Seveste
 
-> [!WARNING]
-> **Ainda sem banco de dados.** A API guarda tudo em memória: ao reiniciar, os dados voltam aos dados de teste. A integração com **MySQL** ainda vai ser feita: cada repositório (`api/src/repositories/repo_*`) vai ganhar uma implementação MySQL no lugar da atual em memória (`*_mock.go`), sem mudar controllers nem o front-end.
+> [!NOTE]
+> **Banco de dados: PostgreSQL (Prisma Postgres).** A API se conecta pela variável `DATABASE_URL` e cria sozinha as tabelas na primeira execução (script em [api/sql/setup.sql](api/sql/setup.sql), baseado na versão final do diagrama do projeto).
 >
-> As alterações feitas para conectar o front-end à API estão descritas em [docs/ALTERACOES.md](docs/ALTERACOES.md).
+> As alterações feitas para conectar o front-end à API e integrar o banco estão descritas em [docs/ALTERACOES.md](docs/ALTERACOES.md).
 
 O **Seveste** é um projeto educacional desenvolvido como trabalho acadêmico na **FATEC Botucatu**. A proposta é criar uma plataforma voltada à doação e ao recebimento de roupas, aproximando pessoas que desejam contribuir de pessoas que precisam ser acolhidas.
 
@@ -21,18 +21,30 @@ Este repositório faz parte de um trabalho da **FATEC Botucatu** e possui finali
 
 ## Como rodar localmente
 
-São dois processos: a API em Go e o front-end em Next.js. O front acessa a API pelo proxy `/api/*` configurado em `next.config.ts`, então basta subir os dois.
+São três peças: o banco PostgreSQL, a API em Go e o front-end em Next.js. O front acessa a API pelo proxy `/api/*` configurado em `next.config.ts`.
 
-1. **API (Go 1.27+)** — porta `8080`:
+1. **Banco PostgreSQL.** Use a connection string do Prisma Postgres (no painel do Prisma: *Connect to your database* → connection string do tipo `postgres://...`) ou um PostgreSQL local. Se `DATABASE_URL` não for definida, a API tenta `postgres://postgres@localhost:5432/seveste?sslmode=disable`.
 
-   ```bash
+2. **API (Go 1.27+)** — porta `8080`. Rode de dentro da pasta `api/` (a API lê o `sql/setup.sql` de lá):
+
+   ```powershell
+   # PowerShell
    cd api
+   $env:DATABASE_URL = "postgres://USUARIO:SENHA@db.prisma.io:5432/postgres?sslmode=require"
    go run .
    ```
 
-   Por enquanto os dados ficam em memória (até a integração com MySQL) e são recriados a cada reinício com alguns usuários de teste (por exemplo, doador `teste@gmail.com` / senha `teste` e acolhida `marcinha123@gmail.com` / senha `dasd1233`). As variáveis de ambiente opcionais estão descritas em [API.md](API.md).
+   ```bash
+   # bash
+   cd api
+   DATABASE_URL="postgres://USUARIO:SENHA@db.prisma.io:5432/postgres?sslmode=require" go run .
+   ```
 
-2. **Front-end** — porta `3000`:
+   A connection string tem a senha do banco: não a coloque no código nem faça commit dela.
+
+   Na primeira execução a API cria as tabelas, e o banco começa vazio: crie as contas pela tela de cadastro (`/join`).
+
+3. **Front-end** — porta `3000`:
 
    ```bash
    npm install
@@ -40,6 +52,23 @@ São dois processos: a API em Go e o front-end em Next.js. O front acessa a API 
    ```
 
    Se a API estiver em outro endereço, defina `API_URL` (padrão `http://localhost:8080`).
+
+## Deploy na Vercel
+
+O front-end e a API são publicados como **dois projetos na Vercel**, a partir deste mesmo repositório. O banco é o Prisma Postgres.
+
+1. **Banco:** crie o banco no Prisma Postgres e copie a connection string (`postgres://...`). Na primeira requisição, a API cria as tabelas sozinha.
+2. **Projeto da API:** *Add New → Project*, escolha o repositório e, em **Root Directory**, selecione `api`. O framework fica como *Other*: a Vercel encontra a função Go em `api/api/index.go`, e o `api/vercel.json` manda todas as rotas para ela. Variáveis de ambiente:
+   - `DATABASE_URL`: a connection string do Prisma Postgres;
+   - `JWT_SECRET`: um texto longo e aleatório;
+   - `COOKIE_SECURE`: `true`.
+3. **Projeto do front-end:** *Add New → Project* de novo, com o mesmo repositório e **Root Directory** na raiz (framework Next.js). Variável de ambiente:
+   - `API_URL`: o endereço do projeto da API (ex.: `https://seveste-api.vercel.app`).
+
+   O navegador só fala com o front; o Next repassa `/api/*` para a API, então o cookie de login funciona sem configurar CORS.
+4. Teste a API em `https://<projeto-da-api>.vercel.app/api/v1/saude`; a resposta deve ser `{"status":"ok"}`.
+
+> O `api/go.mod` pede Go 1.27. Se o build da API na Vercel reclamar da versão do Go, baixe a linha `go` do `go.mod` para a versão mais nova que a Vercel aceitar. O código não depende de nada específico do 1.27.
 
 ### Navegador de desenvolvimento
 

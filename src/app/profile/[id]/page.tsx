@@ -223,7 +223,7 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
                                                 <h3 className="mb-1 text-lg font-bold text-seveste-dark transition-colors duration-300 group-hover:text-seveste-green truncate">
                                                     {doacao.titulo}
                                                 </h3>
-                                                <p className="mb-4 text-sm text-seveste-muted">Tamanho {rotuloTamanho(doacao.tamanho)} • {rotuloCondicao(doacao.estado)}</p>
+                                                <p className="mb-4 text-sm text-seveste-muted">Tamanho {rotuloTamanho(doacao.tamanho)} • {rotuloCondicao(doacao.condicao)}</p>
                                                 <div className="font-medium text-seveste-dark transition-colors duration-300 group-hover:text-seveste-green text-sm">
                                                     Ver detalhes &rarr;
                                                 </div>
